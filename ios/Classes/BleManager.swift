@@ -378,7 +378,7 @@ class BleManager{
     }
     
     
-    private func write(data:Data,writeSuccess: WriteSuccess? = nil, writeFail: WriteFail? = nil){
+    public func write(data:Data,writeSuccess: WriteSuccess? = nil, writeFail: WriteFail? = nil){
          if self.characteristics != nil {
             //过滤出来通知特征
             var writeChar:Characteristic?  = self.characteristics?.filter({ (c) -> Bool in

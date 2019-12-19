@@ -80,9 +80,23 @@ public class SwiftFlutterBlePlugin: NSObject, FlutterPlugin,BleProtocol {
               
     }
     
+    let SEND_MAX_LENGTH = 20
+    
     private func write(hexStr:String,writeSuccess: WriteSuccess? = nil, writeFail: WriteFail? = nil){
         let data = DataUtil.hexStr2Data(from: hexStr)
-        //BleManager.INSTANCE.
+        let byteslength = data.count
+        
+        for i in stride(from: 0, to: byteslength, by: SEND_MAX_LENGTH) {
+            if( i + SEND_MAX_LENGTH) < byteslength {
+                let subData = data.subdata(in: i..<(i+SEND_MAX_LENGTH))
+                BleManager.INSTANCE.write(data: subData)
+            }else{
+                let subData = data.subdata(in: i..<byteslength)
+                BleManager.INSTANCE.write(data: subData)
+            }
+        }
+        
+        
     }
     
     
@@ -206,6 +220,10 @@ extension Data {
         }
 
         return String(utf16CodeUnits: hexChars, count: hexChars.count)
+    }
+    public func subdata(in range: CountableClosedRange<Data.Index>) -> Data
+    {
+        return self.subdata(in: range.lowerBound..<range.upperBound + 1)
     }
 }
 
