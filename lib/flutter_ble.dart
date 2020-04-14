@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 import 'package:flutter/services.dart';
 
 class BleManager {
@@ -36,7 +35,7 @@ class BleManager {
   }
 
   bool isBleOpen = false; //蓝牙是否打开
-  bool isBleConnect = false; //是否连接设备
+  bool isBleConnect = false; //是否连接蓝牙设备
 
   void _bleListener() {
     _channel.setMethodCallHandler((call) async {
