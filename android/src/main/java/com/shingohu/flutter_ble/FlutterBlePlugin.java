@@ -101,7 +101,7 @@ public class FlutterBlePlugin implements MethodCallHandler, BleListener, PluginR
     }
 
 
-    private void write(String hexData, BleWriteListener listener) {
+    private synchronized void write(String hexData, BleWriteListener listener) {
         BleManager.getInstance().write(hexData, listener);
     }
 

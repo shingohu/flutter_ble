@@ -105,11 +105,11 @@ public class BleManager {
 
     private void startNotify() {
         if (targetDevice != null) {
-            mBle.startNotify(targetDevice, new BleNotiftCallback<BleDevice>() {
+            mBle.enableNotify(targetDevice,true, new BleNotiftCallback<BleDevice>() {
 
                 @Override
                 public void onChanged(BleDevice device, BluetoothGattCharacteristic characteristic) {
-                    String data = ByteUtils.byteArrayToHexStr(characteristic.getValue());
+                    String data = ByteUtils.bytes2HexStr(characteristic.getValue());
                     for (BleListener listener : bleListeners) {
                         listener.onBleNotifyData(data);
                     }
@@ -124,7 +124,7 @@ public class BleManager {
         if (isDeviceConnect()) {
             EntityData data = new EntityData.Builder()
                     .setAutoWriteMode(true)
-                    .setData(ByteUtils.hexStrToByteArray(hexStr))
+                    .setData(ByteUtils.hexStr2Bytes(hexStr))
                     .setPackLength(20)
                     .setAddress(targetDevice.getBleAddress()).build();
             mBle.writeEntity(data, new BleWriteEntityCallback<BleDevice>() {
@@ -170,7 +170,7 @@ public class BleManager {
     }
 
 
-    private void initBle() {
+    private synchronized void initBle() {
         if (mBle != null) {
             return;
         }
@@ -238,12 +238,12 @@ public class BleManager {
     }
 
 
-    public void startScan() {
+    public synchronized void startScan() {
 
-        if (!checkLocationPermission()) {
-            requestLocationPermission();
-            return;
-        }
+       // if (!checkLocationPermission()) {
+          //  requestLocationPermission();
+          //  return;
+       // }
 
         if (targetDevice == null && mBle != null) {
             if (!mBle.isBleEnable() || mBle.isScanning()) {
@@ -317,7 +317,7 @@ public class BleManager {
 
     }
 
-    private void connectTargetDevice() {
+    private synchronized void connectTargetDevice() {
         if (targetDevice != null) {
             Log.e("BLE", "找到指定的设备,停止扫描,开始连接");
             stopScan();
@@ -325,14 +325,14 @@ public class BleManager {
         }
     }
 
-    private void stopScan() {
+    private synchronized void stopScan() {
         if (mBle != null) {
             mBle.stopScan();
         }
     }
 
     ///主动断开连接
-    public void disconnect() {
+    public synchronized void disconnect() {
         autoScan = false;
         if (mBle != null) {
             stopScan();
@@ -343,7 +343,7 @@ public class BleManager {
     }
 
 
-    public void destory() {
+    public synchronized void destory() {
         if (mBle != null) {
             disconnect();
             bleListeners.clear();
@@ -354,7 +354,7 @@ public class BleManager {
     }
 
 
-    private void connect() {
+    private synchronized void connect() {
         if (targetDevice != null) {
             targetDevice.setAutoConnect(true);
             mBle.connect(targetDevice, new BleConnectCallback<BleDevice>() {
@@ -403,7 +403,7 @@ public class BleManager {
 
 
     ///蓝牙状态
-    private void bleStatusListener() {
+    private synchronized void bleStatusListener() {
         mBle.setBleStatusCallback(isOn -> {
             for (BleListener listener : bleListeners) {
                 listener.onBleEnableChange(isOn);
