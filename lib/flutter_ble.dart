@@ -56,7 +56,7 @@ class BleManager {
 
   void _notifyBleEnableChange(bool enable) {
     for (BleListener listener in _bleListeners) {
-      listener.onBleConnectChange(enable);
+      listener.onBleEnableChange(enable);
     }
   }
 
