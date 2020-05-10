@@ -172,14 +172,26 @@ public class FlutterBlePlugin implements MethodCallHandler, BleListener, Flutter
     public void onBleEnableChange(boolean enable) {
 
         if (mChannel != null) {
-            mChannel.invokeMethod("bleEnable", enable);
+            uiHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    mChannel.invokeMethod("bleEnable", enable);
+                }
+            });
+
         }
     }
 
     @Override
     public void onBleConnectChange(boolean connect) {
         if (mChannel != null) {
-            mChannel.invokeMethod("bleConnect", connect);
+            uiHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    mChannel.invokeMethod("bleConnect", connect);
+                }
+            });
+
         }
     }
 

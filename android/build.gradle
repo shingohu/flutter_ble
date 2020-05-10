@@ -3,19 +3,22 @@ version '1.0'
 
 buildscript {
     repositories {
-        google()
         jcenter()
+        google()
     }
 
     dependencies {
-        classpath 'com.android.tools.build:gradle:3.6.2'
+        classpath 'com.android.tools.build:gradle:3.6.3'
     }
 }
 
 rootProject.allprojects {
+
     repositories {
-        google()
+        maven { url "https://dl.bintray.com/superliu/maven" }
         jcenter()
+        google()
+
     }
 }
 
@@ -42,5 +45,5 @@ dependencies {
     //implementation "androidx.appcompat:appcompat-resources:1.1.0"
 
     //https://github.com/aicareles/Android-BLE
-    implementation 'cn.com.superLei:blelibrary:3.0.5'
+    implementation 'cn.com.superLei:blelibrary:3.1.0'
 }

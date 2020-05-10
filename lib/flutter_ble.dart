@@ -102,8 +102,8 @@ class BleManager {
   }
 
   ///写入数据,数据需要编码成16进制字符串
-  Future<bool> write(String hexStr) {
-    return _channel.invokeMethod("write", hexStr);
+  Future<bool> write(String hexStr) async {
+    return _channel.invokeMethod<bool>("write", hexStr);
   }
 }
 

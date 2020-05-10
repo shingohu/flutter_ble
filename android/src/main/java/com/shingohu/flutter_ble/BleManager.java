@@ -21,7 +21,7 @@ import java.util.UUID;
 
 import cn.com.heaton.blelibrary.ble.Ble;
 import cn.com.heaton.blelibrary.ble.callback.BleConnectCallback;
-import cn.com.heaton.blelibrary.ble.callback.BleNotiftCallback;
+import cn.com.heaton.blelibrary.ble.callback.BleNotifyCallback;
 import cn.com.heaton.blelibrary.ble.callback.BleScanCallback;
 import cn.com.heaton.blelibrary.ble.callback.BleWriteEntityCallback;
 import cn.com.heaton.blelibrary.ble.model.BleDevice;
@@ -103,43 +103,58 @@ public class BleManager {
 
     private void startNotify() {
         if (targetDevice != null) {
-            mBle.enableNotify(targetDevice, true, new BleNotiftCallback<BleDevice>() {
+
+            mBle.enableNotify(targetDevice, true, new BleNotifyCallback<BleDevice>() {
 
                 @Override
                 public void onChanged(BleDevice device, BluetoothGattCharacteristic characteristic) {
-                    String data = ByteUtils.bytes2HexStr(characteristic.getValue());
+                    String data = ByteUtils.bytes2HexStr(characteristic.getValue()).toUpperCase();
+                    //Log.e("BLE", "接收数据" + data);
                     for (BleListener listener : bleListeners) {
                         listener.onBleNotifyData(data);
                     }
                 }
 
+                @Override
+                public void onNotifySuccess(BleDevice device) {
+                    Log.e("BLE", "通知成功");
+                    for (BleListener listener : bleListeners) {
+                        listener.onBleConnectChange(device.isConnected());
+                    }
+                }
+
+                @Override
+                public void onNotifyCanceled(BleDevice device) {
+                    Log.e("BLE", "通知取消");
+                }
             });
         }
+
 
     }
 
     public void write(String hexStr, BleWriteListener writeListener) {
+
         if (isDeviceConnect()) {
             EntityData data = new EntityData.Builder()
                     .setAutoWriteMode(true)
                     .setData(ByteUtils.hexStr2Bytes(hexStr))
                     .setPackLength(20)
                     .setAddress(targetDevice.getBleAddress()).build();
+           // Log.e("BLE","发送数据"+hexStr);
             mBle.writeEntity(data, new BleWriteEntityCallback<BleDevice>() {
                 @Override
                 public void onWriteSuccess() {
-                    if (writeListener != null) {
-                        writeListener.onWriteSuccess();
-                    }
+                   // Log.e("BLE","发送数据成功"+hexStr);
                 }
 
                 @Override
                 public void onWriteFailed() {
-                    if (writeListener != null) {
-                        writeListener.onWriteFailed();
-                    }
                 }
             });
+            if (writeListener != null) {
+                writeListener.onWriteSuccess();
+            }
         } else {
             if (writeListener != null) {
                 writeListener.onWriteFailed();
@@ -174,32 +189,28 @@ public class BleManager {
         }
         Ble.Options options = Ble.options()
                 .setThrowBleException(true)//设置是否抛出蓝牙异常
-                .setAutoConnect(true)//设置是否自动连接
+                // .setAutoConnect(true)//设置是否自动连接
                 .setFactory(new BleFactory() {
                     @Override
                     public BleDevice create(String address, String name) {
                         return super.create(address, name);
                     }
                 })
+                .setLogBleEnable(false)
                 .setConnectFailedRetryCount(3)
                 .setUuidService(UUID.fromString(mainSeviceUUID))
-                .setUuidNotify(UUID.fromString(notifyCharacteristicUUID))
+                .setUuidNotifyCha(UUID.fromString(notifyCharacteristicUUID))
                 .setUuidWriteCha(UUID.fromString(writeCharacteristicUUID))
                 .setUuidReadCha(UUID.fromString(readCharacteristicUUID))
                 .setConnectTimeout(10 * 1000)//设置连接超时时长
                 .setScanPeriod(12 * 1000);
         mBle = options.create(mContext);
         bleStatusListener();
-        //需要延时，等待service bind完成
-        new Handler().postDelayed(() -> {
-            if (!isBluetoothOpen()) {
-                openBluetooth();//强制开启蓝牙
-            } else {
-                startScan();
-            }
-        }, 1500);
-
-
+        if (!isBluetoothOpen()) {
+            openBluetooth();//强制开启蓝牙
+        } else {
+            startScan();
+        }
     }
 
 
@@ -307,7 +318,6 @@ public class BleManager {
 
     private synchronized void stopScan() {
         if (mBle != null && mBle.isScanning()) {
-
             mBle.stopScan();
         }
     }
@@ -334,21 +344,23 @@ public class BleManager {
 
     private synchronized void connect() {
         if (targetDevice != null) {
-            targetDevice.setAutoConnect(true);
+            //targetDevice.setAutoConnect(true);
             mBle.connect(targetDevice, new BleConnectCallback<BleDevice>() {
                 @Override
                 public void onConnectionChanged(BleDevice device) {
                     targetDevice = device;
-                    if (!device.isConnectting()) {
+                    if (!device.isConnecting()) {
                         if (device.isConnected()) {
                             ///连接成功
                             Log.e("BLE", "连接成功");
                         } else {
-                            Log.e("BLE", "连接失败");
+                            Log.e("BLE", "连接断开");
+                            onDisconnected();
+                            for (BleListener listener : bleListeners) {
+                                listener.onBleConnectChange(device.isConnected());
+                            }
                         }
-                        for (BleListener listener : bleListeners) {
-                            listener.onBleConnectChange(device.isConnected());
-                        }
+
                     } else {
                         Log.e("BLE", "连接中");
                     }
@@ -358,6 +370,7 @@ public class BleManager {
                 public void onReady(BleDevice device) {
                     super.onReady(device);
                     startNotify();
+
                 }
 
                 @Override
@@ -377,6 +390,14 @@ public class BleManager {
     }
 
 
+    private void onDisconnected() {
+        targetDevice = null;
+        if (isBluetoothOpen()) {
+            startScan();
+        }
+    }
+
+
     ///蓝牙状态
     private synchronized void bleStatusListener() {
         mBle.setBleStatusCallback(isOn -> {
@@ -384,15 +405,14 @@ public class BleManager {
                 listener.onBleEnableChange(isOn);
             }
             if (isOn) {
-                Log.e("BLE", "蓝牙已开启,开始搜索");
+                Log.e("BLE", "蓝牙已开启");
                 startScan();
             } else {
-                Log.e("BLE", "蓝牙已关闭,停止当前搜索");
+                Log.e("BLE", "蓝牙已关闭");
                 stopScan();
             }
         });
     }
-
 
     ///获取系统已经配对的设备
     private BluetoothDevice getSystemBondDevice() {
