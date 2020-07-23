@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:flutter/services.dart';
 
 class BleManager {
@@ -73,13 +74,7 @@ class BleManager {
   }
 
   ///初始化需要连接的设备的UUID等信息
-  void initUUID(
-      String targetDeviceName,
-      String advertiseUUID,
-      String mainServiceUUID,
-      String readcharacteristicUUID,
-      String nofitycharacteristicUUID,
-      String writecharacteristicUUID) {
+  void initUUID(String targetDeviceName, String advertiseUUID, String mainServiceUUID, String readcharacteristicUUID, String nofitycharacteristicUUID, String writecharacteristicUUID) {
     _channel.invokeMethod("initUUID", {
       "targetDeviceName": targetDeviceName,
       "advertiseUUID": advertiseUUID,
@@ -103,7 +98,8 @@ class BleManager {
 
   ///写入数据,数据需要编码成16进制字符串
   Future<bool> write(String hexStr) async {
-    return _channel.invokeMethod<bool>("write", hexStr);
+    bool result = await _channel.invokeMethod<bool>("write", hexStr);
+    return result;
   }
 }
 

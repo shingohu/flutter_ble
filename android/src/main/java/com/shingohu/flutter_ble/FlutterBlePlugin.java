@@ -12,6 +12,8 @@ import androidx.core.content.PermissionChecker;
 
 import java.util.Map;
 
+import cn.com.heaton.blelibrary.ble.utils.ByteUtils;
+import io.flutter.Log;
 import io.flutter.embedding.engine.plugins.FlutterPlugin;
 import io.flutter.embedding.engine.plugins.activity.ActivityAware;
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding;
@@ -79,12 +81,13 @@ public class FlutterBlePlugin implements MethodCallHandler, BleListener, Flutter
             write(hexData, new BleWriteListener() {
                 @Override
                 public void onWriteSuccess() {
-                    result.success(true);
+                    uiHandler.post(() -> result.success(true));
+
                 }
 
                 @Override
                 public void onWriteFailed() {
-                    result.success(false);
+                    uiHandler.post(() -> result.success(false));
                 }
             });
             return;
@@ -160,6 +163,31 @@ public class FlutterBlePlugin implements MethodCallHandler, BleListener, Flutter
 
     private synchronized void write(String hexData, BleWriteListener listener) {
         BleManager.getInstance().write(hexData, listener);
+       // testData(hexData);
+    }
+
+    private void testData(String hexData){
+
+        byte[] data = ByteUtils.hexStr2Bytes(hexData);
+
+        int index = 0;
+        int length = data.length;
+        int availableLength = length;
+        int packLength = 20;
+        while (index < length) {
+            int onePackLength = packLength;
+
+            onePackLength = (availableLength >= packLength ? packLength : availableLength);
+
+            byte[] txBuffer = new byte[onePackLength];
+            for (int i = 0; i < onePackLength; i++) {
+                if (index < length) {
+                    txBuffer[i] = data[index++];
+                }
+            }
+            availableLength -= onePackLength;
+            Log.e("BLE","分包发送数据"+ByteUtils.bytes2HexStr(txBuffer));
+        }
     }
 
 

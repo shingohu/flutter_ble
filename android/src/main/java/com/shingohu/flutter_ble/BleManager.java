@@ -134,27 +134,37 @@ public class BleManager {
     }
 
     public void write(String hexStr, BleWriteListener writeListener) {
-
         if (isDeviceConnect()) {
             EntityData data = new EntityData.Builder()
-                    .setAutoWriteMode(true)
+                    .setAutoWriteMode(false)
                     .setData(ByteUtils.hexStr2Bytes(hexStr))
                     .setPackLength(20)
+                    .setDelay(50)
+                    .setLastPackComplete(false)
                     .setAddress(targetDevice.getBleAddress()).build();
-           // Log.e("BLE","发送数据"+hexStr);
+
             mBle.writeEntity(data, new BleWriteEntityCallback<BleDevice>() {
                 @Override
                 public void onWriteSuccess() {
-                   // Log.e("BLE","发送数据成功"+hexStr);
+
+                    if (writeListener != null) {
+                        writeListener.onWriteSuccess();
+                    }
+                }
+
+                @Override
+                public void onWriteProgress(double progress) {
+                   // Log.e("BLE","写入数据进度:"+progress);
                 }
 
                 @Override
                 public void onWriteFailed() {
+                    if (writeListener != null) {
+                        writeListener.onWriteFailed();
+                    }
                 }
             });
-            if (writeListener != null) {
-                writeListener.onWriteSuccess();
-            }
+
         } else {
             if (writeListener != null) {
                 writeListener.onWriteFailed();
