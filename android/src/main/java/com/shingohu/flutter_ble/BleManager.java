@@ -133,7 +133,7 @@ public class BleManager {
 
     }
 
-    public void write(String hexStr, BleWriteListener writeListener) {
+    public void write(String hexStr, final BleWriteListener writeListener) {
         if (isDeviceConnect()) {
             EntityData data = new EntityData.Builder()
                     .setAutoWriteMode(false)
@@ -148,23 +148,22 @@ public class BleManager {
                 public void onWriteSuccess() {
 
                     if (writeListener != null) {
-                        writeListener.onWriteSuccess();
+                        UIHandler.of().post(writeListener::onWriteSuccess);
                     }
                 }
 
                 @Override
                 public void onWriteProgress(double progress) {
-                   // Log.e("BLE","写入数据进度:"+progress);
+                    // Log.e("BLE","写入数据进度:"+progress);
                 }
 
                 @Override
                 public void onWriteFailed() {
                     if (writeListener != null) {
-                        writeListener.onWriteFailed();
+                        UIHandler.of().post(writeListener::onWriteFailed);
                     }
                 }
             });
-
         } else {
             if (writeListener != null) {
                 writeListener.onWriteFailed();

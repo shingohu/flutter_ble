@@ -1,6 +1,7 @@
 package com.shingohu.flutter_ble;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
 import android.content.pm.PackageManager;
@@ -10,9 +11,13 @@ import android.os.Build;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.PermissionChecker;
 
+import java.math.BigDecimal;
 import java.util.Map;
+import java.util.concurrent.Callable;
 
+import cn.com.heaton.blelibrary.ble.model.EntityData;
 import cn.com.heaton.blelibrary.ble.utils.ByteUtils;
+import cn.com.heaton.blelibrary.ble.utils.ThreadUtils;
 import io.flutter.Log;
 import io.flutter.embedding.engine.plugins.FlutterPlugin;
 import io.flutter.embedding.engine.plugins.activity.ActivityAware;
@@ -35,7 +40,6 @@ public class FlutterBlePlugin implements MethodCallHandler, BleListener, Flutter
     Activity mActivity;
     MethodChannel mChannel;
     ActivityPluginBinding activityBinding;
-    final UIHandler uiHandler = new UIHandler();
 
 
     private void initPlugin(BinaryMessenger messenger, Context context) {
@@ -57,50 +61,38 @@ public class FlutterBlePlugin implements MethodCallHandler, BleListener, Flutter
     }
 
     @Override
-    public void onMethodCall(MethodCall call, Result result) {
+    public void onMethodCall(MethodCall call, final Result result) {
         String method = call.method;
         if (method.equals("initUUID")) {
             initUUID((Map<String, String>) call.arguments);
             result.success(true);
-            return;
-        }
-
-        if (method.equals("startScan")) {
+        } else if (method.equals("startScan")) {
             startScan();
             result.success(true);
-            return;
-        }
-        if (method.equals("openBle")) {
+        } else if (method.equals("openBle")) {
             openBle();
             result.success(true);
-            return;
-        }
-
-        if (method.equals("write")) {
+        } else if (method.equals("write")) {
             String hexData = (String) call.arguments;
+            final Result tempResult = result;
             write(hexData, new BleWriteListener() {
                 @Override
                 public void onWriteSuccess() {
-                    uiHandler.post(() -> result.success(true));
-
+                    tempResult.success(true);
                 }
 
                 @Override
                 public void onWriteFailed() {
-                    uiHandler.post(() -> result.success(false));
+                    tempResult.success(false);
                 }
             });
-            return;
-        }
 
-        if (method.equals("isGPSEnable")) {
+        } else if (method.equals("isGPSEnable")) {
             result.success(isGPSEnable());
-            return;
-        }
-
-        if (method.equals("checkLocationPermission")) {
+        } else if (method.equals("checkLocationPermission")) {
             result.success(checkLocationPermission());
-            return;
+        } else {
+            result.notImplemented();
         }
 
     }
@@ -158,36 +150,89 @@ public class FlutterBlePlugin implements MethodCallHandler, BleListener, Flutter
             return ActivityCompat.shouldShowRequestPermissionRationale(mActivity, Manifest.permission.ACCESS_COARSE_LOCATION);
         }
         return false;
-
     }
 
     private synchronized void write(String hexData, BleWriteListener listener) {
         BleManager.getInstance().write(hexData, listener);
-       // testData(hexData);
+        //executeEntity(hexData, listener);
     }
 
-    private void testData(String hexData){
+    boolean isAutoWriteMode = false;
+    boolean isWritingEntity = false;
 
-        byte[] data = ByteUtils.hexStr2Bytes(hexData);
+    @SuppressLint("RestrictedApi")
+    private void executeEntity(String hexData, BleWriteListener listener) {
 
-        int index = 0;
-        int length = data.length;
-        int availableLength = length;
-        int packLength = 20;
-        while (index < length) {
-            int onePackLength = packLength;
+        EntityData entityData = new EntityData.Builder()
+                .setAutoWriteMode(false)
+                .setData(ByteUtils.hexStr2Bytes(hexData))
+                .setPackLength(20)
+                .setDelay(50)
+                .setLastPackComplete(false)
+                .build();
 
-            onePackLength = (availableLength >= packLength ? packLength : availableLength);
 
-            byte[] txBuffer = new byte[onePackLength];
-            for (int i = 0; i < onePackLength; i++) {
-                if (index < length) {
-                    txBuffer[i] = data[index++];
+        final boolean autoWriteMode = entityData.isAutoWriteMode();
+        final byte[] data = entityData.getData();
+        final int packLength = entityData.getPackLength();
+
+        final long delay = entityData.getDelay();
+        final boolean lastPackComplete = entityData.isLastPackComplete();
+        long startTime = System.currentTimeMillis();
+
+        Callable<Boolean> callable = new Callable<Boolean>() {
+            @Override
+            public Boolean call() throws Exception {
+                isWritingEntity = true;
+                isAutoWriteMode = autoWriteMode;
+                int index = 0;
+                int length = data.length;
+                int availableLength = length;
+                while (index < length) {
+
+                    int onePackLength = packLength;
+                    if (!lastPackComplete) {//最后一包不足数据字节不会自动补零
+                        onePackLength = (availableLength >= packLength ? packLength : availableLength);
+                    }
+                    byte[] txBuffer = new byte[onePackLength];
+                    for (int i = 0; i < onePackLength; i++) {
+                        if (index < length) {
+                            txBuffer[i] = data[index++];
+                        }
+                    }
+                    availableLength -= onePackLength;
+                    try {
+                        Thread.sleep(delay);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+
+
+                    double progress = new BigDecimal((float) index / length).setScale(2, BigDecimal.ROUND_HALF_UP).doubleValue();
+                    Log.e("BLE", "数据写入进度->" + progress);
+
+                    try {
+                        Thread.sleep(delay);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+
                 }
+                if (listener != null) {
+
+                    UIHandler.of().post(() -> {
+
+                        Log.e("BLE", "发送数据耗时->" + (System.currentTimeMillis() - startTime));
+
+                        listener.onWriteSuccess();
+                    });
+                    isWritingEntity = false;
+                    isAutoWriteMode = false;
+                }
+                return true;
             }
-            availableLength -= onePackLength;
-            Log.e("BLE","分包发送数据"+ByteUtils.bytes2HexStr(txBuffer));
-        }
+        };
+        ThreadUtils.submit(callable);
     }
 
 
@@ -200,25 +245,14 @@ public class FlutterBlePlugin implements MethodCallHandler, BleListener, Flutter
     public void onBleEnableChange(boolean enable) {
 
         if (mChannel != null) {
-            uiHandler.post(new Runnable() {
-                @Override
-                public void run() {
-                    mChannel.invokeMethod("bleEnable", enable);
-                }
-            });
-
+            UIHandler.of().post(() -> mChannel.invokeMethod("bleEnable", enable));
         }
     }
 
     @Override
     public void onBleConnectChange(boolean connect) {
         if (mChannel != null) {
-            uiHandler.post(new Runnable() {
-                @Override
-                public void run() {
-                    mChannel.invokeMethod("bleConnect", connect);
-                }
-            });
+            UIHandler.of().post(() -> mChannel.invokeMethod("bleConnect", connect));
 
         }
     }
@@ -226,7 +260,7 @@ public class FlutterBlePlugin implements MethodCallHandler, BleListener, Flutter
     @Override
     public void onBleNotifyData(String hexStr) {
         if (mChannel != null) {
-            uiHandler.post(() -> mChannel.invokeMethod("notify", hexStr));
+            UIHandler.of().post(() -> mChannel.invokeMethod("notify", hexStr));
         }
     }
 
