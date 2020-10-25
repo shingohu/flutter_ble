@@ -358,7 +358,7 @@ class BleManager{
         
         if self.characteristics != nil {
             //过滤出来通知特征
-            var notiftChar:Characteristic?  = self.characteristics?.filter({ (c) -> Bool in
+            let notiftChar:Characteristic?  = self.characteristics?.filter({ (c) -> Bool in
                 return c.uuid == self.notifyCharacteristicUUID
             })[0];
                 print("设置通知")
@@ -378,10 +378,12 @@ class BleManager{
     }
     
     
-    public func write(data:Data,writeSuccess: WriteSuccess? = nil, writeFail: WriteFail? = nil){
+    
+    //写入数据
+    private func write(data:Data,writeSuccess: WriteSuccess? = nil, writeFail: WriteFail? = nil){
          if self.characteristics != nil {
             //过滤出来通知特征
-            var writeChar:Characteristic?  = self.characteristics?.filter({ (c) -> Bool in
+            let writeChar:Characteristic?  = self.characteristics?.filter({ (c) -> Bool in
                 return c.uuid == self.writeCharacteristicUUID
             })[0];
             writeChar?.writeValue(data, type: .withResponse).subscribe(onSuccess: { (c) in
@@ -389,10 +391,49 @@ class BleManager{
             }, onError: { (e) in
                 writeFail?()
             })
-            
-            
-        }
+         }else{
+            writeFail?()
+         }
     }
+    
+    
+    
+    
+    //最大写入数据长度为20
+    let SEND_MAX_LENGTH = 20
+    
+    public func write(hexStr:String,writeSuccess: WriteSuccess? = nil, writeFail: WriteFail? = nil){
+        
+        if(!isTargetDeviceConnected){
+            writeFail?()
+            return;
+        }
+        
+        
+        let data = DataUtil.hexStr2Data(from: hexStr)
+        let byteslength = data.count
+        
+        
+        write(data: data,writeSuccess: writeSuccess,writeFail: writeFail)
+        
+        
+//        for i in stride(from: 0, to: byteslength, by: SEND_MAX_LENGTH) {
+//            if( i + SEND_MAX_LENGTH) < byteslength {
+//                let subData = data.subdata(in: i..<(i+SEND_MAX_LENGTH))
+//                write(data: subData,writeSuccess: writeSuccess,writeFail: writeFail)
+//            }else{
+//                //最后一包
+//                let subData = data.subdata(in: i..<byteslength)
+//                write(data: subData,writeSuccess: writeSuccess,writeFail: writeFail)
+//            }
+//        }
+//
+        
+    }
+    
+    
+    
+    
     
     
     

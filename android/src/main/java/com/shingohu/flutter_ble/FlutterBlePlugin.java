@@ -267,6 +267,7 @@ public class FlutterBlePlugin implements MethodCallHandler, BleListener, Flutter
     @Override
     public void requestLocationPermission() {
         if (mActivity != null) {
+
             ActivityCompat.requestPermissions(mActivity, new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, REQUEST_PERMISSION_LOCATION);
         }
     }
@@ -313,6 +314,7 @@ public class FlutterBlePlugin implements MethodCallHandler, BleListener, Flutter
             activityBinding = null;
             mActivity = null;
         }
+
     }
 
     @Override
