@@ -7,6 +7,7 @@ public interface BleListener {
 
     void onBleNotifyData(String hexStr);
 
+
     ///需要定位权限
     void requestLocationPermission();
 }
