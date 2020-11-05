@@ -51,6 +51,9 @@ class BleManager {
       if (call.method == "notify") {
         _notifyBleNotifyData(call.arguments);
       }
+      if (call.method == "onBleWriteError") {
+        _notifyBleWriteError();
+      }
       return true;
     });
   }
@@ -70,6 +73,12 @@ class BleManager {
   void _notifyBleNotifyData(String hexStr) {
     for (BleListener listener in _bleListeners) {
       listener.onBleNotifyData(hexStr);
+    }
+  }
+
+  void _notifyBleWriteError() {
+    for (BleListener listener in _bleListeners) {
+      listener.onBleWriteError();
     }
   }
 
@@ -109,4 +118,5 @@ abstract class BleListener {
   void onBleConnectChange(bool connect) {}
 
   void onBleNotifyData(String hexStr) {}
+  void onBleWriteError() {}
 }

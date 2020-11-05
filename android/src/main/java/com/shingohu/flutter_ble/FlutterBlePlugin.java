@@ -72,7 +72,6 @@ public class FlutterBlePlugin implements MethodCallHandler, BleListener, Flutter
         } else if (method.equals("openBle")) {
             openBle();
             result.success(true);
-
         } else if (method.equals("write")) {
             String hexData = (String) call.arguments;
             final Result tempResult = result;
@@ -82,7 +81,9 @@ public class FlutterBlePlugin implements MethodCallHandler, BleListener, Flutter
                     try {
                         tempResult.success(true);
                     } catch (Exception e) {
+                        onBleWriteError();
                     }
+
                 }
 
                 @Override
@@ -90,6 +91,7 @@ public class FlutterBlePlugin implements MethodCallHandler, BleListener, Flutter
                     try {
                         tempResult.success(false);
                     } catch (Exception e) {
+                        onBleWriteError();
                     }
                 }
             });
@@ -164,84 +166,6 @@ public class FlutterBlePlugin implements MethodCallHandler, BleListener, Flutter
         //executeEntity(hexData, listener);
     }
 
-    boolean isAutoWriteMode = false;
-    boolean isWritingEntity = false;
-
-    @SuppressLint("RestrictedApi")
-    private void executeEntity(String hexData, BleWriteListener listener) {
-
-        EntityData entityData = new EntityData.Builder()
-                .setAutoWriteMode(false)
-                .setData(ByteUtils.hexStr2Bytes(hexData))
-                .setPackLength(20)
-                .setDelay(50)
-                .setLastPackComplete(false)
-                .build();
-
-
-        final boolean autoWriteMode = entityData.isAutoWriteMode();
-        final byte[] data = entityData.getData();
-        final int packLength = entityData.getPackLength();
-
-        final long delay = entityData.getDelay();
-        final boolean lastPackComplete = entityData.isLastPackComplete();
-        long startTime = System.currentTimeMillis();
-
-        Callable<Boolean> callable = new Callable<Boolean>() {
-            @Override
-            public Boolean call() throws Exception {
-                isWritingEntity = true;
-                isAutoWriteMode = autoWriteMode;
-                int index = 0;
-                int length = data.length;
-                int availableLength = length;
-                while (index < length) {
-
-                    int onePackLength = packLength;
-                    if (!lastPackComplete) {//最后一包不足数据字节不会自动补零
-                        onePackLength = (availableLength >= packLength ? packLength : availableLength);
-                    }
-                    byte[] txBuffer = new byte[onePackLength];
-                    for (int i = 0; i < onePackLength; i++) {
-                        if (index < length) {
-                            txBuffer[i] = data[index++];
-                        }
-                    }
-                    availableLength -= onePackLength;
-                    try {
-                        Thread.sleep(delay);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-
-
-                    double progress = new BigDecimal((float) index / length).setScale(2, BigDecimal.ROUND_HALF_UP).doubleValue();
-                    Log.e("BLE", "数据写入进度->" + progress);
-
-                    try {
-                        Thread.sleep(delay);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-
-                }
-                if (listener != null) {
-
-                    UIHandler.of().post(() -> {
-
-                        Log.e("BLE", "发送数据耗时->" + (System.currentTimeMillis() - startTime));
-
-                        listener.onWriteSuccess();
-                    });
-                    isWritingEntity = false;
-                    isAutoWriteMode = false;
-                }
-                return true;
-            }
-        };
-        ThreadUtils.submit(callable);
-    }
-
 
     private void addBleListener() {
         BleManager.getInstance().addBleListener(this);
@@ -260,7 +184,12 @@ public class FlutterBlePlugin implements MethodCallHandler, BleListener, Flutter
     public void onBleConnectChange(boolean connect) {
         if (mChannel != null) {
             UIHandler.of().post(() -> mChannel.invokeMethod("bleConnect", connect));
+        }
+    }
 
+    public void onBleWriteError() {
+        if (mChannel != null) {
+            UIHandler.of().post(() -> mChannel.invokeMethod("onBleWriteError", null));
         }
     }
 

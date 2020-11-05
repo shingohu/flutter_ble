@@ -139,7 +139,7 @@ public class BleManager {
                     .setAutoWriteMode(false)
                     .setData(ByteUtils.hexStr2Bytes(hexStr))
                     .setPackLength(20)
-                    .setDelay(50)
+                    .setDelay(20)
                     .setLastPackComplete(false)
                     .setAddress(targetDevice.getBleAddress()).build();
 
