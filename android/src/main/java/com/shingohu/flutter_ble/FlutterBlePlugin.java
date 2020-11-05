@@ -72,18 +72,25 @@ public class FlutterBlePlugin implements MethodCallHandler, BleListener, Flutter
         } else if (method.equals("openBle")) {
             openBle();
             result.success(true);
+
         } else if (method.equals("write")) {
             String hexData = (String) call.arguments;
             final Result tempResult = result;
             write(hexData, new BleWriteListener() {
                 @Override
                 public void onWriteSuccess() {
-                    tempResult.success(true);
+                    try {
+                        tempResult.success(true);
+                    } catch (Exception e) {
+                    }
                 }
 
                 @Override
                 public void onWriteFailed() {
-                    tempResult.success(false);
+                    try {
+                        tempResult.success(false);
+                    } catch (Exception e) {
+                    }
                 }
             });
 
@@ -267,6 +274,7 @@ public class FlutterBlePlugin implements MethodCallHandler, BleListener, Flutter
     @Override
     public void requestLocationPermission() {
         if (mActivity != null) {
+
             ActivityCompat.requestPermissions(mActivity, new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, REQUEST_PERMISSION_LOCATION);
         }
     }
@@ -313,6 +321,7 @@ public class FlutterBlePlugin implements MethodCallHandler, BleListener, Flutter
             activityBinding = null;
             mActivity = null;
         }
+
     }
 
     @Override

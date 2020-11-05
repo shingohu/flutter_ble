@@ -36,7 +36,7 @@ class BleManager{
     private var characteristics:Array<Characteristic>? //服务下面所有特征的集合
     private var peripheral: Peripheral?//指定设备
     
-    private var targetDeviceName = "Uart" //指定设备名称
+    private var targetDeviceName = "" //指定设备名称
     
     private var autoScanAndConnect = true //是否自动扫描连接
     
@@ -84,6 +84,8 @@ class BleManager{
         self.readCharacteristicUUID = CBUUID.init(string:readCharacteristicUUID)
         self.notifyCharacteristicUUID = CBUUID.init(string:notifyCharacteristicUUID)
         self.writeCharacteristicUUID = CBUUID.init(string:writeCharacteristicUUID)
+        self.startAutoScanConnectPeripheral()
+        
     }
     
     
@@ -98,7 +100,9 @@ class BleManager{
                 if !self.isTargetDeviceConnected {
                     print("连接上了")
                     self.isTargetDeviceConnected = true
-                    self.onConnectStateChange(isConnect: true)
+                    if(self.setNotificationSuccess){
+                        self.onConnectStateChange(isConnect: true)
+                    }
                 }
               
             }
@@ -116,6 +120,9 @@ class BleManager{
     
     //扫描并且连接设备
     public func scanAndConnect(){
+        if !isBlueToothOpen{
+            return
+        }
         
         autoScanAndConnect = true
         if(isTargetDeviceConnected || isScan){
@@ -212,6 +219,7 @@ class BleManager{
     //当断开连接的时候
     private func onDisConnect(){
         self.isTargetDeviceConnected = false
+        self.setNotificationSuccess = false
         if(notificationDisposable != nil){
             notificationDisposable?.dispose()
             notificationDisposable = nil
@@ -353,46 +361,98 @@ class BleManager{
     
     
     
-    //通知回调
-    private func setNotification(){
+    var setNotificationSuccess = false
         
-        if self.characteristics != nil {
-            //过滤出来通知特征
-            var notiftChar:Characteristic?  = self.characteristics?.filter({ (c) -> Bool in
-                return c.uuid == self.notifyCharacteristicUUID
-            })[0];
-                print("设置通知")
-                notificationDisposable = notiftChar?.observeValueUpdateAndSetNotification().subscribe(onNext: { (characteristic) in
-                    let value = characteristic.value
-                    if value != nil{
-                        print("通知数据:",value!)
-                        self.onNotifySuccess(value: value!)
+        //通知回调
+        private func setNotification(){
+            
+            if self.characteristics != nil {
+                //过滤出来通知特征
+                let notiftChar:Characteristic?  = self.characteristics?.filter({ (c) -> Bool in
+                    return c.uuid == self.notifyCharacteristicUUID
+                })[0];
+                    
+                    self.setNotificationSuccess = true
+                    notificationDisposable = notiftChar?.observeValueUpdateAndSetNotification().subscribe(onNext: { (characteristic) in
+                        let value = characteristic.value
+                        if value != nil{
+                            print("通知数据:",value!)
+                            self.onNotifySuccess(value: value!)
+                        }
+                    }, onError: { (error) in
+                        self.setNotificationSuccess = false
+                        print("设置通知出错")
+                        print(error)
+                        self.onNotifyError(error: error)
+                    })
+                
+                Observable<Int>.timer(0.5, scheduler: MainScheduler.instance).subscribe { () in
+                    if(self.setNotificationSuccess){
+                        self.onConnectStateChange(isConnect: self.isTargetDeviceConnected)
                     }
-                }, onError: { (error) in
-                    print("通知出错")
-                    print(error)
-                    self.onNotifyError(error: error)
-                })
-        
+                }
+                
+            
+            }
         }
-    }
     
     
-    public func write(data:Data,writeSuccess: WriteSuccess? = nil, writeFail: WriteFail? = nil){
+    
+    //写入数据
+    private func write(data:Data,writeSuccess: WriteSuccess? = nil, writeFail: WriteFail? = nil){
          if self.characteristics != nil {
             //过滤出来通知特征
-            var writeChar:Characteristic?  = self.characteristics?.filter({ (c) -> Bool in
+            let writeChar:Characteristic?  = self.characteristics?.filter({ (c) -> Bool in
                 return c.uuid == self.writeCharacteristicUUID
             })[0];
-            writeChar?.writeValue(data, type: .withResponse).subscribe(onSuccess: { (c) in
+            writeChar?.writeValue(data, type: .withoutResponse).subscribe(onSuccess: { (c) in
                 writeSuccess?()
             }, onError: { (e) in
                 writeFail?()
             })
-            
-            
-        }
+         }else{
+            writeFail?()
+         }
     }
+    
+    
+    
+    
+    //最大写入数据长度为20
+    let SEND_MAX_LENGTH = 20
+    
+    public func write(hexStr:String,writeSuccess: WriteSuccess? = nil, writeFail: WriteFail? = nil){
+        
+        if(!isTargetDeviceConnected){
+            writeFail?()
+            return;
+        }
+        
+        
+        let data = DataUtil.hexStr2Data(from: hexStr)
+        let byteslength = data.count
+        
+        
+        write(data: data,writeSuccess: writeSuccess,writeFail: writeFail)
+        
+        
+//        for i in stride(from: 0, to: byteslength, by: SEND_MAX_LENGTH) {
+//            if( i + SEND_MAX_LENGTH) < byteslength {
+//                let subData = data.subdata(in: i..<(i+SEND_MAX_LENGTH))
+//                write(data: subData,writeSuccess: writeSuccess,writeFail: writeFail)
+//            }else{
+//                //最后一包
+//                let subData = data.subdata(in: i..<byteslength)
+//                write(data: subData,writeSuccess: writeSuccess,writeFail: writeFail)
+//            }
+//        }
+//
+        
+    }
+    
+    
+    
+    
     
     
     
