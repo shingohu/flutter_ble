@@ -44,7 +44,7 @@ public class SwiftFlutterBlePlugin: NSObject, FlutterPlugin,BleProtocol {
     }
     
     if(method == "write"){
-        self.write(hexStr: call.arguments as! String, writeSuccess: {
+        BleManager.INSTANCE.write(hexStr: call.arguments as! String, writeSuccess: {
             result(true)
         }) {
             result(false)
@@ -80,24 +80,6 @@ public class SwiftFlutterBlePlugin: NSObject, FlutterPlugin,BleProtocol {
               
     }
     
-    let SEND_MAX_LENGTH = 20
-    
-    private func write(hexStr:String,writeSuccess: WriteSuccess? = nil, writeFail: WriteFail? = nil){
-        let data = DataUtil.hexStr2Data(from: hexStr)
-        let byteslength = data.count
-        
-        for i in stride(from: 0, to: byteslength, by: SEND_MAX_LENGTH) {
-            if( i + SEND_MAX_LENGTH) < byteslength {
-                let subData = data.subdata(in: i..<(i+SEND_MAX_LENGTH))
-                BleManager.INSTANCE.write(data: subData)
-            }else{
-                let subData = data.subdata(in: i..<byteslength)
-                BleManager.INSTANCE.write(data: subData)
-            }
-        }
-        
-        
-    }
     
     
     func onBleStateChange(isOn: Bool) {
@@ -110,7 +92,7 @@ public class SwiftFlutterBlePlugin: NSObject, FlutterPlugin,BleProtocol {
     
     func onNofitySuccess(value: Data) {
         
-        channel?.invokeMethod("notify", arguments: value.hexEncodedString())
+        channel?.invokeMethod("notify", arguments: value.hexEncodedString().uppercased())
     }
 }
 
