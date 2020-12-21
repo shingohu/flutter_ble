@@ -83,7 +83,13 @@ class BleManager {
   }
 
   ///初始化需要连接的设备的UUID等信息
-  void initUUID(String targetDeviceName, String advertiseUUID, String mainServiceUUID, String readcharacteristicUUID, String nofitycharacteristicUUID, String writecharacteristicUUID) {
+  void initUUID(
+      String targetDeviceName,
+      String advertiseUUID,
+      String mainServiceUUID,
+      String readcharacteristicUUID,
+      String nofitycharacteristicUUID,
+      String writecharacteristicUUID) {
     _channel.invokeMethod("initUUID", {
       "targetDeviceName": targetDeviceName,
       "advertiseUUID": advertiseUUID,
@@ -105,6 +111,11 @@ class BleManager {
     _channel.invokeMethod("openBle");
   }
 
+  ///断开并重新连接
+  void disAndReConnect() {
+    _channel.invokeMethod("disAndReConnect");
+  }
+
   ///写入数据,数据需要编码成16进制字符串
   Future<bool> write(String hexStr) async {
     bool result = await _channel.invokeMethod<bool>("write", hexStr);
@@ -118,5 +129,6 @@ abstract class BleListener {
   void onBleConnectChange(bool connect) {}
 
   void onBleNotifyData(String hexStr) {}
+
   void onBleWriteError() {}
 }

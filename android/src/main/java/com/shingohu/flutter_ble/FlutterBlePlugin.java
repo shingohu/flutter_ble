@@ -100,7 +100,12 @@ public class FlutterBlePlugin implements MethodCallHandler, BleListener, Flutter
             result.success(isGPSEnable());
         } else if (method.equals("checkLocationPermission")) {
             result.success(checkLocationPermission());
-        } else {
+        }else if(method.equals("disAndReConnect")){
+            BleManager.getInstance().disconnect();
+            result.success(true);
+        }
+
+        else {
             result.notImplemented();
         }
 
@@ -163,7 +168,6 @@ public class FlutterBlePlugin implements MethodCallHandler, BleListener, Flutter
 
     private synchronized void write(String hexData, BleWriteListener listener) {
         BleManager.getInstance().write(hexData, listener);
-        //executeEntity(hexData, listener);
     }
 
 
