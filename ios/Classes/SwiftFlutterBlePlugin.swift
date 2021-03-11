@@ -53,10 +53,10 @@ public class SwiftFlutterBlePlugin: NSObject, FlutterPlugin,BleProtocol {
 
     if(method == "disAndReConnect"){
 
-
+        BleManager.INSTANCE.disAndReConnect()
             result(true)
             return
-        }
+    }
     
     
   }

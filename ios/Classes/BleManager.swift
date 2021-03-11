@@ -359,6 +359,15 @@ class BleManager{
         stopScanAndConnect()
     }
     
+    //主动断开连接,则不要自动扫描重连了
+    public func disAndReConnect(){
+       // updateAutoScanAndConnect(autoScanAndConnect:true )
+       // stopScanAndConnect()
+        if(self.isTargetDeviceConnected){
+            stopScanAndConnect()
+        }
+    }
+    
     
     
     var setNotificationSuccess = false
