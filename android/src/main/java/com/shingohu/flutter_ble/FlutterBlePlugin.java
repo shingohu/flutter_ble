@@ -4,9 +4,12 @@ import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.LocationManager;
 import android.os.Build;
+import android.provider.Settings;
+import android.widget.Toast;
 
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.PermissionChecker;
@@ -36,6 +39,7 @@ import io.flutter.plugin.common.PluginRegistry.Registrar;
 public class FlutterBlePlugin implements MethodCallHandler, BleListener, FlutterPlugin, ActivityAware, PluginRegistry.RequestPermissionsResultListener {
 
     public static final int REQUEST_PERMISSION_LOCATION = 2018;
+    public static final int REQUEST_CODE_LOCATION_SETTINGS = 2019;
     Context mContext;
     Activity mActivity;
     MethodChannel mChannel;
@@ -100,12 +104,10 @@ public class FlutterBlePlugin implements MethodCallHandler, BleListener, Flutter
             result.success(isGPSEnable());
         } else if (method.equals("checkLocationPermission")) {
             result.success(checkLocationPermission());
-        }else if(method.equals("disAndReConnect")){
+        } else if (method.equals("disAndReConnect")) {
             BleManager.getInstance().disconnect();
             result.success(true);
-        }
-
-        else {
+        } else {
             result.notImplemented();
         }
 
@@ -125,7 +127,11 @@ public class FlutterBlePlugin implements MethodCallHandler, BleListener, Flutter
 
     //扫描并连接
     private void startScan() {
-        BleManager.getInstance().startScan();
+        if (BleManager.getInstance().isBluetoothOpen()) {
+            BleManager.getInstance().startScan();
+        } else {
+            BleManager.getInstance().openBluetooth();
+        }
     }
 
     //强制开启BLE
@@ -151,9 +157,18 @@ public class FlutterBlePlugin implements MethodCallHandler, BleListener, Flutter
         return false;
     }
 
+    private void setLocationService() {
+        if (mActivity != null) {
+            Intent locationIntent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+            mActivity.startActivityForResult(locationIntent, REQUEST_CODE_LOCATION_SETTINGS);
+        }
+
+    }
+
+
     public boolean checkLocationPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            int p = PermissionChecker.checkSelfPermission(mContext, Manifest.permission.ACCESS_COARSE_LOCATION);
+            int p = PermissionChecker.checkSelfPermission(mContext, Manifest.permission.ACCESS_FINE_LOCATION);
             return p == PackageManager.PERMISSION_GRANTED;
         }
         return true;
@@ -161,7 +176,7 @@ public class FlutterBlePlugin implements MethodCallHandler, BleListener, Flutter
 
     public boolean shouldShowRequestPermissionRationale() {
         if (mActivity != null) {
-            return ActivityCompat.shouldShowRequestPermissionRationale(mActivity, Manifest.permission.ACCESS_COARSE_LOCATION);
+            return ActivityCompat.shouldShowRequestPermissionRationale(mActivity, Manifest.permission.ACCESS_FINE_LOCATION);
         }
         return false;
     }
@@ -207,8 +222,8 @@ public class FlutterBlePlugin implements MethodCallHandler, BleListener, Flutter
     @Override
     public void requestLocationPermission() {
         if (mActivity != null) {
-
-            ActivityCompat.requestPermissions(mActivity, new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, REQUEST_PERMISSION_LOCATION);
+            //targetSdkVersion 28以及以下使用模糊定位权限即可,但是如果是29以及以上要使用精准定位权限,否则无法搜索到蓝牙
+            ActivityCompat.requestPermissions(mActivity, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, REQUEST_PERMISSION_LOCATION);
         }
     }
 
@@ -274,6 +289,12 @@ public class FlutterBlePlugin implements MethodCallHandler, BleListener, Flutter
                     }
                 }
         }
+        if (requestCode == REQUEST_CODE_LOCATION_SETTINGS) {
+            if (isGPSEnable()) {
+                startScan();
+            }
+        }
+
         return false;
     }
 }

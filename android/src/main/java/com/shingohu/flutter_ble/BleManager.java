@@ -215,17 +215,24 @@ public class BleManager {
                 .setScanPeriod(12 * 1000);
         mBle = options.create(mContext);
         bleStatusListener();
-        if (!isBluetoothOpen()) {
-            openBluetooth();//强制开启蓝牙
-        } else {
-            startScan();
+        if(checkLocationPermission()) {
+            if (!isBluetoothOpen()) {
+                openBluetooth();//强制开启蓝牙
+            } else {
+                startScan();
+            }
+        }else{
+            for (BleListener listener : bleListeners) {
+                listener.requestLocationPermission();
+            }
+            Log.e("BLE", "没有定位权限 无法搜索到蓝牙设备");
         }
     }
 
 
     public boolean checkLocationPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            int p = PermissionChecker.checkSelfPermission(mContext, Manifest.permission.ACCESS_COARSE_LOCATION);
+            int p = PermissionChecker.checkSelfPermission(mContext, Manifest.permission.ACCESS_FINE_LOCATION);
             return p == PackageManager.PERMISSION_GRANTED;
         }
         return true;
