@@ -98,7 +98,7 @@ class BleManager{
        connectStateDisposable =  peripheral.observeConnection().subscribe(onNext:{ (b) in
             if b {
                 if !self.isTargetDeviceConnected {
-                    print("连接上了")
+                    print("蓝牙连接成功回调")
                     self.isTargetDeviceConnected = true
                     if(self.setNotificationSuccess){
                         self.onConnectStateChange(isConnect: true)
@@ -108,7 +108,7 @@ class BleManager{
             }
             else{
                 if self.isTargetDeviceConnected {
-                    print("连接断开了")
+                    print("蓝牙连接断开回调")
                     self.onDisConnect()
                     self.onConnectStateChange(isConnect: false)
                 }
@@ -123,7 +123,6 @@ class BleManager{
         if !isBlueToothOpen{
             return
         }
-        
         autoScanAndConnect = true
         if(isTargetDeviceConnected || isScan){
             //已连接或者正在扫描中
@@ -133,16 +132,15 @@ class BleManager{
        if(self.retrieveConnectedPeripheralsWithServices()){
             return;
        }
-        
-        
        self.isScan = true
-       print("开始扫描连接设备")
+       print("开始扫描并连接设备")
        scanDisposable = connectObservable(peripheralObs:  centralManager.scanForPeripherals(withServices: [targetDeviceAdvertUUID])
         .timeout(DispatchTimeInterval.seconds(8), scheduler: MainScheduler.instance)
             .filter { (per) -> Bool in
                 return (per.peripheral.name?.hasPrefix(self.targetDeviceName) ?? false)
        }
        .take(1).flatMap({ (sp) -> Observable<Peripheral> in
+        print("扫描到指定的设备,开始连接")
         return Observable.from(optional: sp.peripheral)
        }))
         
@@ -202,7 +200,7 @@ class BleManager{
                      }
                     }
                    }else{
-                       print("未找到指定设备")
+                       print("已经连接的设备中未找到指定设备")
                    }
                }
            }else{
@@ -254,13 +252,13 @@ class BleManager{
         
         self.isScan = false
         if(scanDisposable != nil){
-            print("停止扫描连接订阅")
+            print("停止扫描")
             scanDisposable?.dispose()
             scanDisposable = nil
         }
         
         if(connectDisposable != nil){
-            print("停止连接订阅")
+            print("停止连接")
             connectDisposable?.dispose()
             connectDisposable = nil
         }
@@ -273,7 +271,7 @@ class BleManager{
     
     //当扫描连接失败时
     private func onScanAndConnectError(){
-        print("扫描连接操作失败")
+        print("扫描连接超时操作失败")
         self.stopScanAndConnect()
     
     }
@@ -313,15 +311,16 @@ class BleManager{
     }
     
     
-    //后台自动扫描并连接的设备  间隔12
+    //后台自动扫描并连接的设备  间隔10
     private func startAutoScanConnectPeripheral(){
         stopAutoScanConnectPeripheral()
         if(autoScanAndConnect && !self.isTargetDeviceConnected){
-            if(isFirst){
-                self.scanAndConnect()
-                isFirst = false
-            }
-            autoScanDisposable =  Observable<Int>.interval(DispatchTimeInterval.seconds(12), scheduler: MainScheduler.instance).subscribe({_ in
+//            if(isFirst){
+//                self.scanAndConnect()
+//                isFirst = false
+//            }
+            self.scanAndConnect()
+            autoScanDisposable =  Observable<Int>.interval(DispatchTimeInterval.seconds(10), scheduler: MainScheduler.instance).subscribe({_ in
                 self.scanAndConnect()
             })
         }
@@ -385,7 +384,7 @@ class BleManager{
                     notificationDisposable = notiftChar?.observeValueUpdateAndSetNotification().subscribe(onNext: { (characteristic) in
                         let value = characteristic.value
                         if value != nil{
-                            print("通知数据:",value!)
+                            //print("通知数据:",value!)
                             self.onNotifySuccess(value: value!)
                         }
                     }, onError: { (error) in
