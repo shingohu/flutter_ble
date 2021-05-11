@@ -217,7 +217,7 @@ public class BleManager {
         bleStatusListener();
         if(checkLocationPermission()) {
             if (!isBluetoothOpen()) {
-                openBluetooth();//强制开启蓝牙
+               // openBluetooth();//强制开启蓝牙
             } else {
                 startScan();
             }
