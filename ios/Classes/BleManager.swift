@@ -78,7 +78,7 @@ class BleManager{
     
     
     public func initWithUUID(deviceName:String,deviceAdvertUUID:String,mainServiceUUID:String,readCharacteristicUUID:String,notifyCharacteristicUUID:String,writeCharacteristicUUID:String){
-        self.targetDeviceName = deviceName
+        self.targetDeviceName = deviceName.uppercased()
         self.targetDeviceAdvertUUID = CBUUID.init(string:deviceAdvertUUID)
         self.targetServiceUUID = CBUUID.init(string:mainServiceUUID)
         self.readCharacteristicUUID = CBUUID.init(string:readCharacteristicUUID)
@@ -137,7 +137,7 @@ class BleManager{
        scanDisposable = connectObservable(peripheralObs:  centralManager.scanForPeripherals(withServices: [targetDeviceAdvertUUID])
         .timeout(DispatchTimeInterval.seconds(8), scheduler: MainScheduler.instance)
             .filter { (per) -> Bool in
-                return (per.peripheral.name?.hasPrefix(self.targetDeviceName) ?? false)
+                return (per.peripheral.name?.uppercased().hasPrefix(self.targetDeviceName) ?? false)
        }
        .take(1).flatMap({ (sp) -> Observable<Peripheral> in
         print("扫描到指定的设备,开始连接")
@@ -192,7 +192,7 @@ class BleManager{
                    let deviceArray = centralManager.retrieveConnectedPeripherals(withServices: [targetDeviceAdvertUUID])
                    if deviceArray.count>0{
                     for p in deviceArray{
-                        if(p.name?.hasPrefix(self.targetDeviceName) ?? false )
+                        if(p.name?.uppercased().hasPrefix(self.targetDeviceName) ?? false )
                     {
                         print("系统已连接指定设备,这里直接连接")
                         self.connect(peripheral: p)

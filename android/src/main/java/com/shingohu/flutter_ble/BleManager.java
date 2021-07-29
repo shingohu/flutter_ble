@@ -69,7 +69,7 @@ public class BleManager {
 
     public void init(Context context, String targetDeviceName, String advertiseUUID, String mainSeviceUUID, String readCharacteristicUUID, String notifyCharacteristicUUID, String writeCharacteristicUUID) {
         this.mContext = context;
-        this.targetDeviceName = targetDeviceName;
+        this.targetDeviceName = targetDeviceName.toUpperCase();
         this.advertiseUUID = advertiseUUID;
         this.mainSeviceUUID = mainSeviceUUID;
         this.readCharacteristicUUID = readCharacteristicUUID;
@@ -215,13 +215,13 @@ public class BleManager {
                 .setScanPeriod(12 * 1000);
         mBle = options.create(mContext);
         bleStatusListener();
-        if(checkLocationPermission()) {
+        if (checkLocationPermission()) {
             if (!isBluetoothOpen()) {
-               // openBluetooth();//强制开启蓝牙
+                // openBluetooth();//强制开启蓝牙
             } else {
                 startScan();
             }
-        }else{
+        } else {
             for (BleListener listener : bleListeners) {
                 listener.requestLocationPermission();
             }
@@ -266,7 +266,7 @@ public class BleManager {
                         }
                         ScanRecord parseRecord = ScanRecord.parseFromBytes(scanRecord);
                         Log.e("BLE", "扫描到设备" + bleName + parseRecord.toString());
-                        if (bleName != null && targetDeviceName != null && bleName.startsWith(targetDeviceName)) {
+                        if (bleName != null && targetDeviceName != null && bleName.toUpperCase().startsWith(targetDeviceName)) {
                             //可能找到指定的设备
                             targetDevice = device;
                         } else {
@@ -436,7 +436,7 @@ public class BleManager {
         Set<BluetoothDevice> devices = adapter.getBondedDevices();
         for (BluetoothDevice device : devices) {
             if (device.getName() != null) {
-                if (device.getName().startsWith(targetDeviceName)) {
+                if (device.getName().toUpperCase().startsWith(targetDeviceName)) {
                     return device;
                 }
             }
