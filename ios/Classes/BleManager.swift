@@ -393,8 +393,9 @@ class BleManager{
                         print(error)
                         self.onNotifyError(error: error)
                     })
+               
                 
-                Observable<Int>.timer(0.5, scheduler: MainScheduler.instance).subscribe { () in
+                Observable<Int>.timer(RxTimeInterval.milliseconds(500), scheduler: MainScheduler.instance).subscribe { () in
                     if(self.setNotificationSuccess){
                         self.onConnectStateChange(isConnect: self.isTargetDeviceConnected)
                     }
@@ -413,9 +414,9 @@ class BleManager{
             let writeChar:Characteristic?  = self.characteristics?.filter({ (c) -> Bool in
                 return c.uuid == self.writeCharacteristicUUID
             })[0];
-            writeChar?.writeValue(data, type: .withoutResponse).subscribe(onSuccess: { (c) in
-                writeSuccess?()
-            }, onError: { (e) in
+             writeChar?.writeValue(data, type: .withoutResponse).subscribe(onSuccess: { (c) in
+                 writeSuccess?()
+             }, onFailure: { (e) in
                 writeFail?()
             })
          }else{
