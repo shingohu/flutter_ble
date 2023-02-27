@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 
 class BleManager {
   static const MethodChannel _channel = const MethodChannel('flutter_ble');
-  static BleManager _instance;
+  static BleManager? _instance;
 
   factory BleManager() => _getInstance();
 
@@ -14,7 +14,7 @@ class BleManager {
     if (_instance == null) {
       _instance = BleManager._();
     }
-    return _instance;
+    return _instance!;
   }
 
   BleManager._() {
@@ -118,8 +118,13 @@ class BleManager {
 
   ///写入数据,数据需要编码成16进制字符串
   Future<bool> write(String hexStr) async {
-    bool result = await _channel.invokeMethod<bool>("write", hexStr);
-    return result;
+    bool success = await _channel.invokeMethod<bool>("write", hexStr) ?? false;
+    return success;
+  }
+
+  ///写入数据,无需关心成功失败
+  void writeWithoutResponse(String hexStr) {
+    _channel.invokeMethod<bool>("write", hexStr);
   }
 }
 
