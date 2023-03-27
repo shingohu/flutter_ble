@@ -11,6 +11,7 @@ import android.os.Build;
 import android.provider.Settings;
 import android.widget.Toast;
 
+import androidx.annotation.RequiresApi;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.PermissionChecker;
 
@@ -40,6 +41,7 @@ public class FlutterBlePlugin implements MethodCallHandler, BleListener, Flutter
 
     public static final int REQUEST_PERMISSION_LOCATION = 2018;
     public static final int REQUEST_CODE_LOCATION_SETTINGS = 2019;
+    public static final int REQUEST_PERMISSION_BLUETOOTH_12 = 2020;
     Context mContext;
     Activity mActivity;
     MethodChannel mChannel;
@@ -181,6 +183,15 @@ public class FlutterBlePlugin implements MethodCallHandler, BleListener, Flutter
         return false;
     }
 
+
+    @RequiresApi(api = Build.VERSION_CODES.S)
+    public boolean shouldShowBluetoothRequestPermissionRationale() {
+        if (mActivity != null) {
+            return ActivityCompat.shouldShowRequestPermissionRationale(mActivity, Manifest.permission.BLUETOOTH_SCAN);
+        }
+        return false;
+    }
+
     private synchronized void write(String hexData, BleWriteListener listener) {
         BleManager.getInstance().write(hexData, listener);
     }
@@ -220,10 +231,19 @@ public class FlutterBlePlugin implements MethodCallHandler, BleListener, Flutter
     }
 
     @Override
-    public void requestLocationPermission() {
+    public void requestBluetoothPermission() {
         if (mActivity != null) {
-            //targetSdkVersion 28以及以下使用模糊定位权限即可,但是如果是29以及以上要使用精准定位权限,否则无法搜索到蓝牙
-            ActivityCompat.requestPermissions(mActivity, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, REQUEST_PERMISSION_LOCATION);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+
+                //targetSdkVersion 31 更改了蓝牙相关权限
+                ActivityCompat.requestPermissions(mActivity, new String[]{Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT}, REQUEST_PERMISSION_BLUETOOTH_12);
+            } else {
+
+                //targetSdkVersion 28以及以下使用模糊定位权限即可,但是如果是29以及以上要使用精准定位权限,否则无法搜索到蓝牙
+                ActivityCompat.requestPermissions(mActivity, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, REQUEST_PERMISSION_LOCATION);
+            }
+
+
         }
     }
 
@@ -289,6 +309,24 @@ public class FlutterBlePlugin implements MethodCallHandler, BleListener, Flutter
                     }
                 }
         }
+
+        if (requestCode == REQUEST_PERMISSION_BLUETOOTH_12) {
+            if (grantResults.length > 0)
+                if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    startScan();
+                    return true;
+                } else if (grantResults[0] == PackageManager.PERMISSION_DENIED) {
+                    //在用户已经拒绝授权的情况下，如果shouldShowRequestPermissionRationale返回false则
+                    // 可以推断出用户选择了“不在提示”选项，在这种情况下需要引导用户至设置页手动授权
+                    if (shouldShowRequestPermissionRationale()) {
+                        ///用户拒绝了 并且不在提示
+                        ///这里应该返回到Flutter端,让Flutter端弹出提示框
+                        //todo
+                    }
+                }
+        }
+
+
         if (requestCode == REQUEST_CODE_LOCATION_SETTINGS) {
             if (isGPSEnable()) {
                 startScan();

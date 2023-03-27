@@ -9,6 +9,6 @@ public interface BleListener {
 
 
     ///需要定位权限
-    void requestLocationPermission();
+    void requestBluetoothPermission();
 }
 

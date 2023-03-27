@@ -196,7 +196,8 @@ public class BleManager {
         if (mBle != null) {
             return;
         }
-        Ble.Options options = Ble.options()
+
+        mBle = Ble.options()
                 .setThrowBleException(true)//设置是否抛出蓝牙异常
                 // .setAutoConnect(true)//设置是否自动连接
                 .setFactory(new BleFactory() {
@@ -212,10 +213,10 @@ public class BleManager {
                 .setUuidWriteCha(UUID.fromString(writeCharacteristicUUID))
                 .setUuidReadCha(UUID.fromString(readCharacteristicUUID))
                 .setConnectTimeout(10 * 1000)//设置连接超时时长
-                .setScanPeriod(12 * 1000);
-        mBle = options.create(mContext);
+                .setScanPeriod(12 * 1000)
+                .create(mContext);
         bleStatusListener();
-        if (checkLocationPermission()) {
+        if (checkBluetoothPermission()) {
             if (!isBluetoothOpen()) {
                 // openBluetooth();//强制开启蓝牙
             } else {
@@ -223,15 +224,20 @@ public class BleManager {
             }
         } else {
             for (BleListener listener : bleListeners) {
-                listener.requestLocationPermission();
+                listener.requestBluetoothPermission();
             }
             Log.e("BLE", "没有定位权限 无法搜索到蓝牙设备");
         }
     }
 
 
-    public boolean checkLocationPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+    ///检查蓝牙相关权限
+    public boolean checkBluetoothPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            int p1 = PermissionChecker.checkSelfPermission(mContext, Manifest.permission.BLUETOOTH_SCAN);
+            int p2 = PermissionChecker.checkSelfPermission(mContext, Manifest.permission.BLUETOOTH_CONNECT);
+            return p1 == PackageManager.PERMISSION_GRANTED && p2 == PackageManager.PERMISSION_GRANTED;
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             int p = PermissionChecker.checkSelfPermission(mContext, Manifest.permission.ACCESS_FINE_LOCATION);
             return p == PackageManager.PERMISSION_GRANTED;
         }
@@ -241,9 +247,9 @@ public class BleManager {
 
     public synchronized void startScan() {
 
-        if (!checkLocationPermission()) {
+        if (!checkBluetoothPermission()) {
             for (BleListener listener : bleListeners) {
-                listener.requestLocationPermission();
+                listener.requestBluetoothPermission();
             }
             Log.e("BLE", "没有定位权限 无法搜索到蓝牙设备");
             return;
@@ -387,16 +393,6 @@ public class BleManager {
                     super.onReady(device);
                     startNotify();
 
-                }
-
-                @Override
-                public void onConnectException(BleDevice device, int errorCode) {
-                    Log.e("BLE", "连接异常" + errorCode);
-                }
-
-                @Override
-                public void onConnectTimeOut(BleDevice device) {
-                    Log.e("BLE", "连接超时");
                 }
             });
 
