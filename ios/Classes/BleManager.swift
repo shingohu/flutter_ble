@@ -99,6 +99,9 @@ class BleManager{
             if b {
                 if !self.isTargetDeviceConnected {
                     print("蓝牙连接成功回调")
+                    
+                    print("Max write value: \(peripheral.maximumWriteValueLength(for: .withoutResponse))")
+                    
                     self.isTargetDeviceConnected = true
                     if(self.setNotificationSuccess){
                         self.onConnectStateChange(isConnect: true)
@@ -134,13 +137,13 @@ class BleManager{
        }
        self.isScan = true
        print("开始扫描并连接设备")
-       scanDisposable = connectObservable(peripheralObs:  centralManager.scanForPeripherals(withServices: [targetDeviceAdvertUUID])
+       scanDisposable = connectObservable(peripheralObs:  centralManager.scanForPeripherals(withServices: [])
         .timeout(DispatchTimeInterval.seconds(8), scheduler: MainScheduler.instance)
             .filter { (per) -> Bool in
                 return (per.peripheral.name?.uppercased().hasPrefix(self.targetDeviceName) ?? false)
        }
        .take(1).flatMap({ (sp) -> Observable<Peripheral> in
-        print("扫描到指定的设备,开始连接")
+           print("扫描到指定的设备,开始连接->\(sp.peripheral.peripheral.description)")
         return Observable.from(optional: sp.peripheral)
        }))
         
@@ -194,7 +197,8 @@ class BleManager{
                     for p in deviceArray{
                         if(p.name?.uppercased().hasPrefix(self.targetDeviceName) ?? false )
                     {
-                        print("系统已连接指定设备,这里直接连接")
+                        print("系统已连接指定设备,这里直接连接->\(p.peripheral.description)")
+                        print("Max write value: \(p.peripheral.maximumWriteValueLength(for: .withoutResponse))")
                         self.connect(peripheral: p)
                         return true;
                      }
@@ -410,11 +414,13 @@ class BleManager{
     //写入数据
     private func write(data:Data,writeSuccess: WriteSuccess? = nil, writeFail: WriteFail? = nil){
          if self.characteristics != nil {
+             print("ble写入数据时间：\(CLongLong(round(Date().timeIntervalSince1970*1000)))")
             //过滤出来通知特征
             let writeChar:Characteristic?  = self.characteristics?.filter({ (c) -> Bool in
                 return c.uuid == self.writeCharacteristicUUID
             })[0];
              writeChar?.writeValue(data, type: .withoutResponse).subscribe(onSuccess: { (c) in
+                 print("ble写入数据成功时间：\(CLongLong(round(Date().timeIntervalSince1970*1000)))")
                  writeSuccess?()
              }, onFailure: { (e) in
                 writeFail?()
@@ -439,7 +445,8 @@ class BleManager{
         
         
         let data = DataUtil.hexStr2Data(from: hexStr)
-        let byteslength = data.count
+        //  let byteslength = data.count
+        
         
         
         write(data: data,writeSuccess: writeSuccess,writeFail: writeFail)
