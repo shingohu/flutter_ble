@@ -2,34 +2,24 @@ import 'dart:async';
 
 import 'package:flutter/services.dart';
 
-class BleManager {
+late _BLEManager BLE = _BLEManager._();
+
+class _BLEManager {
   static const MethodChannel _channel = const MethodChannel('flutter_ble');
-  static BleManager _instance;
 
-  factory BleManager() => _getInstance();
-
-  static BleManager get instance => _getInstance();
-
-  static BleManager _getInstance() {
-    if (_instance == null) {
-      _instance = BleManager._();
-    }
-    return _instance;
-  }
-
-  BleManager._() {
+  _BLEManager._() {
     _bleListener();
   }
 
-  List<BleListener> _bleListeners = [];
+  List<BLEListener> _bleListeners = [];
 
-  void addBleListener(BleListener bleListener) {
+  void addListener(BLEListener bleListener) {
     if (!_bleListeners.contains(bleListener)) {
       _bleListeners.add(bleListener);
     }
   }
 
-  void removeBleListener(BleListener bleListener) {
+  void removeListener(BLEListener bleListener) {
     if (_bleListeners.contains(bleListener)) {
       _bleListeners.remove(bleListener);
     }
@@ -59,38 +49,56 @@ class BleManager {
   }
 
   void _notifyBleEnableChange(bool enable) {
-    for (BleListener listener in _bleListeners) {
-      listener.onBleEnableChange(enable);
+    for (BLEListener listener in _bleListeners) {
+      listener.onBLEEnableChange(enable);
     }
   }
 
   void _notifyBleConnectChange(bool connect) {
-    for (BleListener listener in _bleListeners) {
-      listener.onBleConnectChange(connect);
+    for (BLEListener listener in _bleListeners) {
+      listener.onBLEConnectChange(connect);
     }
   }
 
   void _notifyBleNotifyData(String hexStr) {
-    for (BleListener listener in _bleListeners) {
-      listener.onBleNotifyData(hexStr);
+    for (BLEListener listener in _bleListeners) {
+      listener.onBLENotifyData(hexStr);
     }
   }
 
   void _notifyBleWriteError() {
-    for (BleListener listener in _bleListeners) {
-      listener.onBleWriteError();
+    for (BLEListener listener in _bleListeners) {
+      listener.onBLEWriteError();
     }
   }
 
   ///初始化需要连接的设备的UUID等信息
-  void initUUID(
+  Future<void> initUUID(
       String targetDeviceName,
       String advertiseUUID,
       String mainServiceUUID,
       String readcharacteristicUUID,
       String nofitycharacteristicUUID,
-      String writecharacteristicUUID) {
-    _channel.invokeMethod("initUUID", {
+      String writecharacteristicUUID) async {
+    return _channel.invokeMethod("initUUID", {
+      "targetDeviceName": targetDeviceName,
+      "advertiseUUID": advertiseUUID,
+      "mainServiceUUID": mainServiceUUID,
+      "readcharacteristicUUID": readcharacteristicUUID,
+      "notifycharacteristicUUID": nofitycharacteristicUUID,
+      "writecharacteristicUUID": writecharacteristicUUID,
+    });
+  }
+
+  ///初始化需要连接的设备的UUID等信息
+  Future<void> init({
+    String name,
+    String advertiseUUID,
+    String readUUID,
+    String notifyUUID,
+    String writeUUID,
+  }) async {
+    return _channel.invokeMethod("initUUID", {
       "targetDeviceName": targetDeviceName,
       "advertiseUUID": advertiseUUID,
       "mainServiceUUID": mainServiceUUID,
@@ -101,14 +109,29 @@ class BleManager {
   }
 
   ///扫描并且连接设备
-  void scanAndConnect() {
-    _channel.invokeMethod("startScan");
+  Future<void> startScan() async {
+    return _channel.invokeMethod("startScan");
   }
 
   ///强制打开蓝牙(Android Only)
   /// IOS 跳转到设置界面
-  void openBle() {
+  void openBLESetting() {
     _channel.invokeMethod("openBle");
+  }
+
+  ///蓝牙是否开启
+  Future<bool> isOpen() async {
+    return await _channel.invokeMethod<bool>("isOpen") ?? false;
+  }
+
+  ///停止扫描
+  Future<void> stopScan() async {
+    return _channel.invokeMethod("stopScan");
+  }
+
+  ///断开连接
+  Future<void> disconnect() {
+    return _channel.invokeMethod("disconnect");
   }
 
   ///断开并重新连接
@@ -118,17 +141,17 @@ class BleManager {
 
   ///写入数据,数据需要编码成16进制字符串
   Future<bool> write(String hexStr) async {
-    bool result = await _channel.invokeMethod<bool>("write", hexStr);
+    bool result = await _channel.invokeMethod<bool>("write", hexStr) ?? false;
     return result;
   }
 }
 
-abstract class BleListener {
-  void onBleEnableChange(bool enable) {}
+abstract class BLEListener {
+  void onBLEEnableChange(bool enable) {}
 
-  void onBleConnectChange(bool connect) {}
+  void onBLEConnectChange(bool connect) {}
 
-  void onBleNotifyData(String hexStr) {}
+  void onBLENotifyData(String hexStr) {}
 
-  void onBleWriteError() {}
+  void onBLEWriteError() {}
 }
