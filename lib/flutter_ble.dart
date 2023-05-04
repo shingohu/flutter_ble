@@ -74,12 +74,7 @@ class _BLEManager {
 
   ///初始化需要连接的设备的UUID等信息
   Future<void> initUUID(
-      String targetDeviceName,
-      String advertiseUUID,
-      String mainServiceUUID,
-      String readcharacteristicUUID,
-      String nofitycharacteristicUUID,
-      String writecharacteristicUUID) async {
+      String targetDeviceName, String advertiseUUID, String mainServiceUUID, String readcharacteristicUUID, String nofitycharacteristicUUID, String writecharacteristicUUID) async {
     return _channel.invokeMethod("initUUID", {
       "targetDeviceName": targetDeviceName,
       "advertiseUUID": advertiseUUID,
@@ -92,19 +87,18 @@ class _BLEManager {
 
   ///初始化需要连接的设备的UUID等信息
   Future<void> init({
-    String name,
-    String advertiseUUID,
-    String readUUID,
-    String notifyUUID,
-    String writeUUID,
+    String? name,
+    required String advertiseUUID,
+    required String notifyUUID,
+    required String writeUUID,
+    String? readUUID,
   }) async {
     return _channel.invokeMethod("initUUID", {
-      "targetDeviceName": targetDeviceName,
+      "targetDeviceName": name,
       "advertiseUUID": advertiseUUID,
-      "mainServiceUUID": mainServiceUUID,
-      "readcharacteristicUUID": readcharacteristicUUID,
-      "notifycharacteristicUUID": nofitycharacteristicUUID,
-      "writecharacteristicUUID": writecharacteristicUUID,
+      "readcharacteristicUUID": readUUID,
+      "notifycharacteristicUUID": notifyUUID,
+      "writecharacteristicUUID": writeUUID,
     });
   }
 
