@@ -137,7 +137,7 @@ public class WriteRequest<T extends BleDevice> implements WriteWrapperCallback<T
                     }
                     if (autoWriteMode){
                         synchronized (lock){
-                            lock.wait(500);
+                            lock.wait(100);
                         }
                     }else {
                         try {

@@ -25,16 +25,21 @@ public class SwiftFlutterBlePlugin: NSObject, FlutterPlugin,BleProtocol {
     
     
     if( method == "initUUID"){
-        initUUID(uuids: call.arguments as! Dictionary<String, String>)
+        initUUID(uuids: call.arguments as! Dictionary<String, Any>)
         result(true)
         return
     }
     
     if(method == "startScan"){
-        startScan()
-        result(true)
+        result(startScan())
         return
     }
+      
+      if(method == "startScan"){
+          BleManager.INSTANCE.setStopScan()
+          result(true)
+          return
+      }
     
     if(method == "openBle"){
         
@@ -42,38 +47,51 @@ public class SwiftFlutterBlePlugin: NSObject, FlutterPlugin,BleProtocol {
         result(true)
         return
     }
+      if(method == "isBLEOpen"){
+          result(BleManager.INSTANCE.isBlueToothOpen)
+          return
+      }
+      if(method == "MTU"){
+          result(BleManager.INSTANCE.getMTU)
+          return
+      }
+      if(method == "isConnected"){
+          result(BleManager.INSTANCE.isConnected)
+          return
+      }
     
     if(method == "write"){
-        BleManager.INSTANCE.write(hexStr: call.arguments as! String, writeSuccess: {
+        BleManager.INSTANCE.write(data: (call.arguments as! FlutterStandardTypedData).data, writeSuccess: {
             result(true)
         }) {
             result(false)
         }
     }
 
-    if(method == "disAndReConnect"){
+    if(method == "disconnect"){
 
-        BleManager.INSTANCE.disAndReConnect()
+        BleManager.INSTANCE.disconnect()
             result(true)
-            return
+        return
     }
     
     
   }
     
-    private func initUUID(uuids:Dictionary<String,String>){
-        let targetDeviceName = uuids["targetDeviceName"]
-        let advertiseUUID = uuids["advertiseUUID"]
-        let mainServiceUUID = uuids["mainServiceUUID"]
-        let readcharacteristicUUID = uuids["readcharacteristicUUID"]
-        let notifycharacteristicUUID = uuids["notifycharacteristicUUID"]
-        let writecharacteristicUUID = uuids["writecharacteristicUUID"]
-        BleManager.INSTANCE.initWithUUID(deviceName: targetDeviceName!, deviceAdvertUUID: advertiseUUID!, mainServiceUUID: mainServiceUUID!, readCharacteristicUUID: readcharacteristicUUID!,notifyCharacteristicUUID: notifycharacteristicUUID!,writeCharacteristicUUID: writecharacteristicUUID!)
+    private func initUUID(uuids:Dictionary<String,Any>){
+        let targetDeviceName = uuids["deviceName"] as! String
+        let advertiseUUID = uuids["advertiseUUID"] as! String
+        let mainServiceUUID = uuids["mainServiceUUID"] as! String
+        let notifycharacteristicUUID = uuids["notifycharacteristicUUID"] as! String
+        let writecharacteristicUUID = uuids["writecharacteristicUUID"] as! String
+        let requestMTU = uuids["requestMTU"] as! Int
+        
+        BleManager.INSTANCE.initWithUUID(deviceName: targetDeviceName, deviceAdvertUUID: advertiseUUID, mainServiceUUID: mainServiceUUID,notifyCharacteristicUUID: notifycharacteristicUUID,writeCharacteristicUUID: writecharacteristicUUID,requestMTU: requestMTU)
         
     }
     
-    private func startScan(){
-        BleManager.INSTANCE.scanAndConnect()
+    private func startScan() ->Bool{
+       return BleManager.INSTANCE.scanAndConnect()
     }
     
     private func openBle(){

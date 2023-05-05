@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_ble/flutter_ble.dart';
@@ -16,13 +17,13 @@ class _MyAppState extends State<MyApp> with BLEListener {
   void initState() {
     BLE.addListener(this);
 
-    BLE.initUUID(
-        "Uart",
-        "0000FFE0-0000-1000-8000-00805F9B34FB",
-        "0000FFE0-0000-1000-8000-00805F9B34FB",
-        "0000FFE1-0000-1000-8000-00805F9B34FB",
-        "0000FFE1-0000-1000-8000-00805F9B34FB",
-        "0000FFE1-0000-1000-8000-00805F9B34FB");
+    BLE.init(
+        name: "Uart",
+        advertiseUUID: "0000FFE0-0000-1000-8000-00805F9B34FB",
+        mainServiceUUID: "0000FFE0-0000-1000-8000-00805F9B34FB",
+        notifyUUID: "0000FFE1-0000-1000-8000-00805F9B34FB",
+        writeUUID: "0000FFE1-0000-1000-8000-00805F9B34FB",
+        requestMTU: 20);
 
     super.initState();
   }
@@ -38,9 +39,9 @@ class _MyAppState extends State<MyApp> with BLEListener {
   }
 
   @override
-  void onBLENotifyData(String hexStr) {
-    print('接收到数据' + hexStr);
-    sb.write(hexStr);
+  void onBLENotifyData(Uint8List bytes) {
+    print('接收到数据' + bytes.toString());
+    sb.write(bytes.toString());
     if (mounted) setState(() {});
   }
 
@@ -59,11 +60,7 @@ class _MyAppState extends State<MyApp> with BLEListener {
         ),
         body: Center(
           child: Column(
-            children: <Widget>[
-              Text("蓝牙状态:${BLE.isBleOpen}"),
-              Text("设备连接状态:${BLE.isBleConnect}"),
-              Text("接收到数据:${sb.toString()}"),
-            ],
+            children: <Widget>[],
           ),
         ),
       ),

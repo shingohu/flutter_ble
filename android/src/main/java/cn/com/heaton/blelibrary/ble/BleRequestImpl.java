@@ -32,7 +32,7 @@ import android.os.Handler;
 
 import androidx.core.os.HandlerCompat;
 
-import com.shingohu.flutter_ble.BuildConfig;
+import com.shingo.ble.BuildConfig;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;

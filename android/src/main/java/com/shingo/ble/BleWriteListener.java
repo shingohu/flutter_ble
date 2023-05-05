@@ -1,4 +1,4 @@
-package com.shingohu.flutter_ble;
+package com.shingo.ble;
 
 public interface BleWriteListener {
     public void onWriteSuccess();

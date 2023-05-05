@@ -1,4 +1,4 @@
-package com.shingohu.flutter_ble;
+package com.shingo.ble;
 
 
 import android.os.Handler;

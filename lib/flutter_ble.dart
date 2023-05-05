@@ -1,5 +1,4 @@
 import 'dart:async';
-
 import 'package:flutter/services.dart';
 
 late _BLEManager BLE = _BLEManager._();
@@ -25,24 +24,16 @@ class _BLEManager {
     }
   }
 
-  bool isBleOpen = false; //蓝牙是否打开
-  bool isBleConnect = false; //是否连接蓝牙设备
-
   void _bleListener() {
     _channel.setMethodCallHandler((call) async {
       if (call.method == "bleEnable") {
-        isBleOpen = call.arguments;
-        _notifyBleEnableChange(isBleOpen);
+        _notifyBleEnableChange(call.arguments);
       }
       if (call.method == "bleConnect") {
-        isBleConnect = call.arguments;
-        _notifyBleConnectChange(isBleConnect);
+        _notifyBleConnectChange(call.arguments);
       }
       if (call.method == "notify") {
         _notifyBleNotifyData(call.arguments);
-      }
-      if (call.method == "onBleWriteError") {
-        _notifyBleWriteError();
       }
       return true;
     });
@@ -60,62 +51,33 @@ class _BLEManager {
     }
   }
 
-  void _notifyBleNotifyData(String hexStr) {
+  void _notifyBleNotifyData(Uint8List bytes) {
     for (BLEListener listener in _bleListeners) {
-      listener.onBLENotifyData(hexStr);
-    }
-  }
-
-  void _notifyBleWriteError() {
-    for (BLEListener listener in _bleListeners) {
-      listener.onBLEWriteError();
+      listener.onBLENotifyData(bytes);
     }
   }
 
   ///初始化需要连接的设备的UUID等信息
-  Future<void> initUUID(
-      String targetDeviceName, String advertiseUUID, String mainServiceUUID, String readcharacteristicUUID, String nofitycharacteristicUUID, String writecharacteristicUUID) async {
+  Future<void> init(
+      {String? name,
+      required String advertiseUUID,
+      required String mainServiceUUID,
+      required String notifyUUID,
+      required String writeUUID,
+      int requestMTU = 20}) async {
     return _channel.invokeMethod("initUUID", {
-      "targetDeviceName": targetDeviceName,
+      "deviceName": name ?? "",
       "advertiseUUID": advertiseUUID,
       "mainServiceUUID": mainServiceUUID,
-      "readcharacteristicUUID": readcharacteristicUUID,
-      "notifycharacteristicUUID": nofitycharacteristicUUID,
-      "writecharacteristicUUID": writecharacteristicUUID,
-    });
-  }
-
-  ///初始化需要连接的设备的UUID等信息
-  Future<void> init({
-    String? name,
-    required String advertiseUUID,
-    required String notifyUUID,
-    required String writeUUID,
-    String? readUUID,
-  }) async {
-    return _channel.invokeMethod("initUUID", {
-      "targetDeviceName": name,
-      "advertiseUUID": advertiseUUID,
-      "readcharacteristicUUID": readUUID,
       "notifycharacteristicUUID": notifyUUID,
       "writecharacteristicUUID": writeUUID,
+      "requestMTU": requestMTU,
     });
   }
 
   ///扫描并且连接设备
-  Future<void> startScan() async {
-    return _channel.invokeMethod("startScan");
-  }
-
-  ///强制打开蓝牙(Android Only)
-  /// IOS 跳转到设置界面
-  void openBLESetting() {
-    _channel.invokeMethod("openBle");
-  }
-
-  ///蓝牙是否开启
-  Future<bool> isOpen() async {
-    return await _channel.invokeMethod<bool>("isOpen") ?? false;
+  Future<bool> startScan() async {
+    return await _channel.invokeMethod("startScan");
   }
 
   ///停止扫描
@@ -123,19 +85,40 @@ class _BLEManager {
     return _channel.invokeMethod("stopScan");
   }
 
+  ///强制打开蓝牙(Android Only)
+  /// IOS 跳转到设置界面
+  Future<void> openSetting() async {
+    await _channel.invokeMethod("openBle");
+  }
+
+  ///蓝牙是否开启
+  Future<bool> isOpen() async {
+    return await _channel.invokeMethod<bool>("isBLEOpen") ?? false;
+  }
+
+  ///是否已经连接上
+  Future<bool> isConnected() async {
+    return await _channel.invokeMethod<bool>("isConnected") ?? false;
+  }
+
+  ///获取MTU大小
+  Future<int> MTU() async {
+    return await _channel.invokeMethod<int>("mtu") ?? 20;
+  }
+
   ///断开连接
   Future<void> disconnect() {
     return _channel.invokeMethod("disconnect");
   }
 
-  ///断开并重新连接
-  void disAndReConnect() {
-    _channel.invokeMethod("disAndReConnect");
+  ///GPS是否开启,android低于31以下版本蓝牙权限的时候需要
+  Future<bool> isGPSEnable() async {
+    return await _channel.invokeMethod("isGPSEnable");
   }
 
-  ///写入数据,数据需要编码成16进制字符串
-  Future<bool> write(String hexStr) async {
-    bool result = await _channel.invokeMethod<bool>("write", hexStr) ?? false;
+  ///写入数据
+  Future<bool> write(Uint8List bytes) async {
+    bool result = await _channel.invokeMethod<bool>("write", bytes) ?? false;
     return result;
   }
 }
@@ -145,7 +128,5 @@ abstract class BLEListener {
 
   void onBLEConnectChange(bool connect) {}
 
-  void onBLENotifyData(String hexStr) {}
-
-  void onBLEWriteError() {}
+  void onBLENotifyData(Uint8List bytes) {}
 }

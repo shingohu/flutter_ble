@@ -3,7 +3,7 @@ package cn.com.heaton.blelibrary.ota;
 import android.os.Handler;
 import android.util.Log;
 
-import com.shingohu.flutter_ble.BuildConfig;
+import com.shingo.ble.BuildConfig;
 
 import java.io.FileInputStream;
 import java.io.IOException;

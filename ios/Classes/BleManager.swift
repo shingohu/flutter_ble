@@ -9,7 +9,7 @@
 import UIKit
 import RxSwift
 import CoreBluetooth
-import RxBluetoothKit
+
 
 
 
@@ -29,10 +29,8 @@ class BleManager{
     //需要用到的服务ID
     private var targetServiceUUID = CBUUID.init(string: "FFE0");
     // 需要用到的服务下面的特征ID (一般直接支持读写通知)
-    private var readCharacteristicUUID = CBUUID.init(string: "FFE1")
     private var notifyCharacteristicUUID = CBUUID.init(string: "FFE1")
     private var writeCharacteristicUUID = CBUUID.init(string: "FFE1")
-   // private var characteristic :Characteristic? //指定特征
     private var characteristics:Array<Characteristic>? //服务下面所有特征的集合
     private var peripheral: Peripheral?//指定设备
     
@@ -54,7 +52,10 @@ class BleManager{
     private var autoScanDisposable :Disposable?//自动扫描连接设备的订阅
     
     private var isScan = false
-    private var isFirst = true;
+    private var isFirst = true
+    
+    private var MTU = 20
+    private var requestMTU = 20
     
     
     
@@ -70,20 +71,24 @@ class BleManager{
     
     
     private init(){
-        bleStateListener()
+        
     }
     
     static let INSTANCE:BleManager = BleManager()
     
     
     
-    public func initWithUUID(deviceName:String,deviceAdvertUUID:String,mainServiceUUID:String,readCharacteristicUUID:String,notifyCharacteristicUUID:String,writeCharacteristicUUID:String){
+    public func initWithUUID(deviceName:String,deviceAdvertUUID:String,mainServiceUUID:String,notifyCharacteristicUUID:String,writeCharacteristicUUID:String,requestMTU:Int){
         self.targetDeviceName = deviceName.uppercased()
         self.targetDeviceAdvertUUID = CBUUID.init(string:deviceAdvertUUID)
         self.targetServiceUUID = CBUUID.init(string:mainServiceUUID)
-        self.readCharacteristicUUID = CBUUID.init(string:readCharacteristicUUID)
+        
         self.notifyCharacteristicUUID = CBUUID.init(string:notifyCharacteristicUUID)
         self.writeCharacteristicUUID = CBUUID.init(string:writeCharacteristicUUID)
+        if(requestMTU > 20){
+            self.requestMTU = requestMTU
+        }
+        bleStateListener()
         self.startAutoScanConnectPeripheral()
         
     }
@@ -99,6 +104,13 @@ class BleManager{
             if b {
                 if !self.isTargetDeviceConnected {
                     print("蓝牙连接成功回调")
+                    
+                    let maxMTU = (peripheral.maximumWriteValueLength(for: .withoutResponse))
+                    if(maxMTU - 3 > self.requestMTU){
+                        self.MTU = self.requestMTU
+                    }else{
+                        self.MTU = maxMTU - 3
+                    }
                     self.isTargetDeviceConnected = true
                     if(self.setNotificationSuccess){
                         self.onConnectStateChange(isConnect: true)
@@ -119,31 +131,60 @@ class BleManager{
     }
     
     //扫描并且连接设备
-    public func scanAndConnect(){
-        if !isBlueToothOpen{
-            return
-        }
+    public func scanAndConnect()->Bool{
+        
         autoScanAndConnect = true
-        if(isTargetDeviceConnected || isScan){
-            //已连接或者正在扫描中
-            print("已连接或者正在扫描中")
-            return
-       }
+    
+        if(!hasBlueToothPermission){
+            print("没有蓝牙权限")
+            return false
+        }
+        
+        if !isBlueToothOpen{
+            print("没有打开蓝牙")
+            return false
+        }
+        
+        if(isTargetDeviceConnected){
+            print("设备已连接")
+            return false
+        }
+        if(isScan){
+            print("正在扫描蓝牙设备")
+            return true
+        }
+    
        if(self.retrieveConnectedPeripheralsWithServices()){
-            return;
+           ///已配对设备中连接了
+            return false
        }
+        
+        
+    
        self.isScan = true
        print("开始扫描并连接设备")
        scanDisposable = connectObservable(peripheralObs:  centralManager.scanForPeripherals(withServices: [targetDeviceAdvertUUID])
-        .timeout(DispatchTimeInterval.seconds(8), scheduler: MainScheduler.instance)
-            .filter { (per) -> Bool in
+        .timeout(DispatchTimeInterval.seconds(12), scheduler: MainScheduler.instance)
+        .filter({ per in
+            if(!self.targetDeviceName.isEmpty){
                 return (per.peripheral.name?.uppercased().hasPrefix(self.targetDeviceName) ?? false)
-       }
+            }else{
+                return true
+            }
+        })
        .take(1).flatMap({ (sp) -> Observable<Peripheral> in
         print("扫描到指定的设备,开始连接")
         return Observable.from(optional: sp.peripheral)
        }))
         
+        return true
+        
+    }
+    
+    
+    ///停止扫描
+    public func setStopScan(){
+       updateAutoScanAndConnect(autoScanAndConnect: false)
     }
     
     
@@ -151,7 +192,7 @@ class BleManager{
     
     
     ///连接操作
-    func connectObservable(peripheralObs:Observable<Peripheral>) -> Disposable {
+    private func connectObservable(peripheralObs:Observable<Peripheral>) -> Disposable {
         
        return peripheralObs.flatMap({ (p) -> Observable<Peripheral> in
                 self.connectStateListener(p)
@@ -192,12 +233,19 @@ class BleManager{
                    let deviceArray = centralManager.retrieveConnectedPeripherals(withServices: [targetDeviceAdvertUUID])
                    if deviceArray.count>0{
                     for p in deviceArray{
-                        if(p.name?.uppercased().hasPrefix(self.targetDeviceName) ?? false )
-                    {
-                        print("系统已连接指定设备,这里直接连接")
-                        self.connect(peripheral: p)
-                        return true;
-                     }
+                        
+                        if(!self.targetDeviceName.isEmpty){
+                            if(p.name?.uppercased().hasPrefix(self.targetDeviceName) ?? false )
+                        {
+                            print("系统已连接指定设备,这里直接连接")
+                            self.connect(peripheral: p)
+                            return true;
+                         }
+                        }else{
+                            
+                            self.connect(peripheral: p)
+                            return true
+                        }
                     }
                    }else{
                        print("已经连接的设备中未找到指定设备")
@@ -218,6 +266,7 @@ class BleManager{
     private func onDisConnect(){
         self.isTargetDeviceConnected = false
         self.setNotificationSuccess = false
+        self.MTU = 20
         if(notificationDisposable != nil){
             notificationDisposable?.dispose()
             notificationDisposable = nil
@@ -290,8 +339,8 @@ class BleManager{
                     
                     self.notifyBleStateChange(isBluetoothOpen: state == .poweredOn)
                     
-                    if(self.bluetoothState == BluetoothState.unknown){
-                       //第一次不管
+                    if(state == BluetoothState.unknown || state == BluetoothState.unauthorized){
+                       //未授权 或授权中 不处理
                     }else{
                         
                         if state == .poweredOn{
@@ -315,19 +364,15 @@ class BleManager{
     private func startAutoScanConnectPeripheral(){
         stopAutoScanConnectPeripheral()
         if(autoScanAndConnect && !self.isTargetDeviceConnected){
-//            if(isFirst){
-//                self.scanAndConnect()
-//                isFirst = false
-//            }
             self.scanAndConnect()
-            autoScanDisposable =  Observable<Int>.interval(DispatchTimeInterval.seconds(10), scheduler: MainScheduler.instance).subscribe({_ in
+            autoScanDisposable =  Observable<Int>.interval(DispatchTimeInterval.seconds(13), scheduler: MainScheduler.instance).subscribe({_ in
                 self.scanAndConnect()
             })
         }
         
     }
     
-    public func updateAutoScanAndConnect(autoScanAndConnect:Bool){
+    private func updateAutoScanAndConnect(autoScanAndConnect:Bool){
         if(autoScanAndConnect != self.autoScanAndConnect){
             self.autoScanAndConnect =  autoScanAndConnect
             if(!self.autoScanAndConnect){
@@ -352,22 +397,14 @@ class BleManager{
     
     
     
+    
     //主动断开连接,则不要自动扫描重连了
-    public func disConnect(){
+    public func disconnect(){
         updateAutoScanAndConnect(autoScanAndConnect:false )
         stopScanAndConnect()
     }
     
-    //主动断开连接,则不要自动扫描重连了
-    public func disAndReConnect(){
-       // updateAutoScanAndConnect(autoScanAndConnect:true )
-       // stopScanAndConnect()
-        if(self.isTargetDeviceConnected){
-            stopScanAndConnect()
-        }
-    }
-    
-    
+  
     
     var setNotificationSuccess = false
         
@@ -384,7 +421,6 @@ class BleManager{
                     notificationDisposable = notiftChar?.observeValueUpdateAndSetNotification().subscribe(onNext: { (characteristic) in
                         let value = characteristic.value
                         if value != nil{
-                            //print("通知数据:",value!)
                             self.onNotifySuccess(value: value!)
                         }
                     }, onError: { (error) in
@@ -393,22 +429,18 @@ class BleManager{
                         print(error)
                         self.onNotifyError(error: error)
                     })
-               
-                
                 Observable<Int>.timer(RxTimeInterval.milliseconds(500), scheduler: MainScheduler.instance).subscribe { () in
                     if(self.setNotificationSuccess){
                         self.onConnectStateChange(isConnect: self.isTargetDeviceConnected)
                     }
                 }
-                
-            
             }
         }
     
     
     
     //写入数据
-    private func write(data:Data,writeSuccess: WriteSuccess? = nil, writeFail: WriteFail? = nil){
+    private func writeOne(data:Data,writeSuccess: WriteSuccess? = nil, writeFail: WriteFail? = nil){
          if self.characteristics != nil {
             //过滤出来通知特征
             let writeChar:Characteristic?  = self.characteristics?.filter({ (c) -> Bool in
@@ -427,10 +459,8 @@ class BleManager{
     
     
     
-    //最大写入数据长度为20
-    let SEND_MAX_LENGTH = 20
-    
-    public func write(hexStr:String,writeSuccess: WriteSuccess? = nil, writeFail: WriteFail? = nil){
+  
+    public func write(data:Data,writeSuccess: WriteSuccess? = nil, writeFail: WriteFail? = nil){
         
         if(!isTargetDeviceConnected){
             writeFail?()
@@ -438,24 +468,44 @@ class BleManager{
         }
         
         
-        let data = DataUtil.hexStr2Data(from: hexStr)
         let byteslength = data.count
         
+        if(byteslength > MTU){
+            ///分包发送
+            multipleWrite(data: data,writeSuccess: writeSuccess,writeFail: writeFail)
+        }else{
+            writeOne(data: data,writeSuccess: writeSuccess,writeFail: writeFail)
+        }
         
-        write(data: data,writeSuccess: writeSuccess,writeFail: writeFail)
+        
+      
         
         
-//        for i in stride(from: 0, to: byteslength, by: SEND_MAX_LENGTH) {
-//            if( i + SEND_MAX_LENGTH) < byteslength {
-//                let subData = data.subdata(in: i..<(i+SEND_MAX_LENGTH))
-//                write(data: subData,writeSuccess: writeSuccess,writeFail: writeFail)
-//            }else{
-//                //最后一包
-//                let subData = data.subdata(in: i..<byteslength)
-//                write(data: subData,writeSuccess: writeSuccess,writeFail: writeFail)
-//            }
-//        }
-//
+    }
+    
+    private func multipleWrite(data:Data,writeSuccess: WriteSuccess? = nil, writeFail: WriteFail? = nil){
+        
+        var byteslength = data.count
+        
+        if(MTU <  byteslength){
+            let subData = data.subdata(in: 0..<MTU)
+            ///剩余数据
+            let lastData = data.subdata(in: MTU..<byteslength)
+            writeOne(data: subData) {
+                //这里可以考虑延时下,避免写入失败？
+                ////写入成功 就写入下次数据
+                self.multipleWrite(data: lastData,writeSuccess: writeSuccess,writeFail: writeFail)
+            } writeFail: {
+                ///写入失败,就直接失败吧
+                writeFail?()
+                return
+            }
+        }else{
+            writeOne(data: data,writeSuccess: writeSuccess,writeFail: writeFail)
+        }
+        
+        
+        
         
     }
     
@@ -467,25 +517,27 @@ class BleManager{
     
     
     //连接状态发送变化
-    func onConnectStateChange(isConnect:Bool){
+    private func onConnectStateChange(isConnect:Bool){
         bleListenerList.forEach {
             $0.value?.onConnectStateChange?(isConnect: isConnect)
         }
     }
     
     //收到通知
-    func onNotifySuccess(value:Data)  {
+    private func onNotifySuccess(value:Data)  {
         bleListenerList.forEach {
             $0.value?.onNofitySuccess?(value: value)
         }
     }
     
     //通知失败
-    func onNotifyError(error:Error)  {
+    private func onNotifyError(error:Error)  {
         bleListenerList.forEach {
             $0.value?.onNofityError?(error: error)
         }
     }
+    
+    
     
    
     
@@ -493,7 +545,7 @@ class BleManager{
     
     
     //蓝牙状态变化通知
-    public func notifyBleStateChange(isBluetoothOpen:Bool){
+    private func notifyBleStateChange(isBluetoothOpen:Bool){
         bleListenerList.forEach {
             $0.value?.onBleStateChange?(isOn: isBluetoothOpen)
         }
@@ -503,8 +555,25 @@ class BleManager{
     
     //手机蓝牙状态
     public var isBlueToothOpen:Bool{
-        
         return self.centralManager.state == .poweredOn
+    }
+    
+    
+    ///是否有蓝牙权限
+    public var hasBlueToothPermission:Bool{
+        return self.centralManager.state != .unauthorized && self.centralManager.state != .unknown
+    }
+    
+    public var getMTU:Int{
+        
+        return self.MTU
+    }
+    
+    
+    ///是否已连接设备
+    public var isConnected:Bool{
+        
+        return self.isTargetDeviceConnected
     }
     
     
