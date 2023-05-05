@@ -1,0 +1,29 @@
+PODS:
+  - Flutter (1.0.0)
+  - flutter_ble (0.0.1):
+    - Flutter
+    - RxSwift (~> 6.5)
+  - RxSwift (6.5.0)
+
+DEPENDENCIES:
+  - Flutter (from `Flutter`)
+  - flutter_ble (from `.symlinks/plugins/flutter_ble/ios`)
+
+SPEC REPOS:
+  trunk:
+    - RxSwift
+
+EXTERNAL SOURCES:
+  Flutter:
+    :path: Flutter
+  flutter_ble:
+    :path: ".symlinks/plugins/flutter_ble/ios"
+
+SPEC CHECKSUMS:
+  Flutter: f04841e97a9d0b0a8025694d0796dd46242b2854
+  flutter_ble: 84c5498d44ea96326568395dc715ce43a7975c21
+  RxSwift: 5710a9e6b17f3c3d6e40d6e559b9fa1e813b2ef8
+
+PODFILE CHECKSUM: b95e0c370474df3a1db278b722738a6230f01f51
+
+COCOAPODS: 1.11.3
