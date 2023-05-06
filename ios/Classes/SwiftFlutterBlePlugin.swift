@@ -1,12 +1,12 @@
 import Flutter
 import Foundation
 import UIKit
+import CoreBluetooth
 
 
 
 
-
-public class SwiftFlutterBlePlugin: NSObject, FlutterPlugin,BleProtocol {
+public class SwiftFlutterBlePlugin: NSObject, FlutterPlugin,BleProtocol{
    
     var channel:FlutterMethodChannel?
     
@@ -48,7 +48,7 @@ public class SwiftFlutterBlePlugin: NSObject, FlutterPlugin,BleProtocol {
         return
     }
       if(method == "isBLEOpen"){
-          result(BleManager.INSTANCE.isBlueToothOpen)
+          result(BleManager.INSTANCE.isBluetoothOpen)
           return
       }
       if(method == "MTU"){
@@ -57,6 +57,18 @@ public class SwiftFlutterBlePlugin: NSObject, FlutterPlugin,BleProtocol {
       }
       if(method == "isConnected"){
           result(BleManager.INSTANCE.isConnected)
+          return
+      }
+      
+      
+      if(method == "requestPermission"){
+          requestPermission(result: result)
+          return
+      }
+      
+      if(method == "openAppSetting"){
+          openAppSetting()
+          result(true)
           return
       }
     
@@ -102,7 +114,25 @@ public class SwiftFlutterBlePlugin: NSObject, FlutterPlugin,BleProtocol {
                           UIApplication.shared.openURL(url)
                       }
               }
-              
+    }
+    
+    private func openAppSetting(){
+        if let url = URL(string: UIApplication.openSettingsURLString), UIApplication.shared.canOpenURL(url) {
+                      if #available(iOS 10.0, *) {
+                          UIApplication.shared.open(url, options: convertToUIApplicationOpenExternalURLOptionsKeyDictionary([:]), completionHandler: nil)
+                      }else{
+                          UIApplication.shared.openURL(url)
+                      }
+              }
+    }
+    
+    
+    
+    
+    func requestPermission(result:@escaping FlutterResult){
+        BluetoothPermissionHandler().requestPermission { hasPermission in
+            result(hasPermission)
+        }
     }
     
     

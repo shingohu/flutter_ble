@@ -43,7 +43,6 @@ class BleManager{
     
     public var isTargetDeviceConnected = false //指定设备是否已经连接
     
-    private var bluetoothState = BluetoothState.unknown //手机蓝牙状态
     private var bleStateDisposable :Disposable? //蓝牙状态订阅
     private var notificationDisposable :Disposable?//通知的订阅
     private var scanDisposable :Disposable?//扫描的订阅
@@ -60,7 +59,7 @@ class BleManager{
     
     
     
-    private lazy var centralManager = { () -> CentralManager in
+    public lazy var centralManager = { () -> CentralManager in
         let bundleId =  Bundle.main.bundleIdentifier!
         return CentralManager(queue:.main,options: [CBCentralManagerOptionRestoreIdentifierKey: bundleId as AnyObject])
     }()
@@ -89,7 +88,8 @@ class BleManager{
             self.requestMTU = requestMTU
         }
         bleStateListener()
-        self.startAutoScanConnectPeripheral()
+
+       // self.startAutoScanConnectPeripheral()
         
     }
     
@@ -135,12 +135,12 @@ class BleManager{
         
         autoScanAndConnect = true
     
-        if(!hasBlueToothPermission){
+        if(!hasBluetoothPermission){
             print("没有蓝牙权限")
             return false
         }
         
-        if !isBlueToothOpen{
+        if !isBluetoothOpen{
             print("没有打开蓝牙")
             return false
         }
@@ -227,7 +227,7 @@ class BleManager{
     
       //根据SERVICE UUID 获取系统已经连接的设备
     func retrieveConnectedPeripheralsWithServices() -> Bool  {
-           if isBlueToothOpen  {
+           if isBluetoothOpen  {
                if  !isTargetDeviceConnected{
                    print("获取已经连接的设备")
                    let deviceArray = centralManager.retrieveConnectedPeripherals(withServices: [targetDeviceAdvertUUID])
@@ -279,7 +279,7 @@ class BleManager{
         
         stopScanAndConnect()
         
-        if(isBlueToothOpen){
+        if(isBluetoothOpen){
             self.startAutoScanConnectPeripheral()
         }else{
             self.stopAutoScanConnectPeripheral()
@@ -324,35 +324,27 @@ class BleManager{
         self.stopScanAndConnect()
     
     }
-    
-    
-  
-    
-    
 
     //蓝牙的状态变化的监听
-    private func bleStateListener(){
+    ///第一次启动也会调用这个
+    public func bleStateListener(){
         if(bleStateDisposable == nil){
             bleStateDisposable =  centralManager.observeState().startWith(centralManager.state)
                 .filter{ $0 == .poweredOn || $0 == .poweredOff}
                 .subscribe(onNext: { (state) in
-                    
-                    self.notifyBleStateChange(isBluetoothOpen: state == .poweredOn)
-                    
-                    if(state == BluetoothState.unknown || state == BluetoothState.unauthorized){
+                    if(state == BluetoothState.unknown || state == BluetoothState.unauthorized || state == BluetoothState.unsupported ){
                        //未授权 或授权中 不处理
                     }else{
-                        
                         if state == .poweredOn{
                             print("蓝牙已打开")
                             self.startAutoScanConnectPeripheral()
-                        }else {
+                        }else  if state == .poweredOff{
                             print("蓝牙已关闭")
                             self.stopAutoScanConnectPeripheral()
                        }
+                        
+                        self.notifyBleStateChange(isBluetoothOpen: state == .poweredOn)
                     }
-                    self.bluetoothState = state
-                    
                     
                 })
         }
@@ -427,7 +419,6 @@ class BleManager{
                         self.setNotificationSuccess = false
                         print("设置通知出错")
                         print(error)
-                        self.onNotifyError(error: error)
                     })
                 Observable<Int>.timer(RxTimeInterval.milliseconds(500), scheduler: MainScheduler.instance).subscribe { () in
                     if(self.setNotificationSuccess){
@@ -485,7 +476,7 @@ class BleManager{
     
     private func multipleWrite(data:Data,writeSuccess: WriteSuccess? = nil, writeFail: WriteFail? = nil){
         
-        var byteslength = data.count
+        let byteslength = data.count
         
         if(MTU <  byteslength){
             let subData = data.subdata(in: 0..<MTU)
@@ -530,20 +521,7 @@ class BleManager{
         }
     }
     
-    //通知失败
-    private func onNotifyError(error:Error)  {
-        bleListenerList.forEach {
-            $0.value?.onNofityError?(error: error)
-        }
-    }
-    
-    
-    
-   
-    
-    
-    
-    
+
     //蓝牙状态变化通知
     private func notifyBleStateChange(isBluetoothOpen:Bool){
         bleListenerList.forEach {
@@ -554,25 +532,24 @@ class BleManager{
     
     
     //手机蓝牙状态
-    public var isBlueToothOpen:Bool{
+    public var isBluetoothOpen:Bool{
         return self.centralManager.state == .poweredOn
     }
     
     
     ///是否有蓝牙权限
-    public var hasBlueToothPermission:Bool{
-        return self.centralManager.state != .unauthorized && self.centralManager.state != .unknown
+    public var hasBluetoothPermission:Bool{
+        
+        return self.centralManager.state != .unauthorized  && self.centralManager.state != .unsupported
     }
     
     public var getMTU:Int{
-        
         return self.MTU
     }
     
     
     ///是否已连接设备
     public var isConnected:Bool{
-        
         return self.isTargetDeviceConnected
     }
     
@@ -634,9 +611,7 @@ class BleManager{
     @objc optional func onBleStateChange(isOn:Bool)
     //收到通知成功
     @objc optional func onNofitySuccess(value:Data)
-    //通知失败
-    @objc optional func onNofityError(error:Error)
-    
+   
     //连接状态发送变化
     @objc optional func onConnectStateChange(isConnect:Bool)
 }

@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:app_settings/app_settings.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_ble/flutter_ble.dart';
 
@@ -15,17 +16,23 @@ class _MyAppState extends State<MyApp> with BLEListener {
 
   @override
   void initState() {
-    BLE.addListener(this);
-
-    BLE.init(
-        name: "Uart",
-        advertiseUUID: "0000FFE0-0000-1000-8000-00805F9B34FB",
-        mainServiceUUID: "0000FFE0-0000-1000-8000-00805F9B34FB",
-        notifyUUID: "0000FFE1-0000-1000-8000-00805F9B34FB",
-        writeUUID: "0000FFE1-0000-1000-8000-00805F9B34FB",
-        requestMTU: 20);
-
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
+      BLE.requestPermission().then((value) {
+
+
+        BLE.addListener(this);
+        BLE.init(
+            name: "Uart",
+            advertiseUUID: "0000FFE0-0000-1000-8000-00805F9B34FB",
+            mainServiceUUID: "0000FFE0-0000-1000-8000-00805F9B34FB",
+            notifyUUID: "0000FFE1-0000-1000-8000-00805F9B34FB",
+            writeUUID: "0000FFE1-0000-1000-8000-00805F9B34FB",
+            requestMTU: 20);
+      });
+    });
+
+
   }
 
   @override
@@ -60,7 +67,21 @@ class _MyAppState extends State<MyApp> with BLEListener {
         ),
         body: Center(
           child: Column(
-            children: <Widget>[],
+            children: <Widget>[
+              TextButton(
+                  onPressed: () {
+                    BLE.openSwitch();
+                  },
+                  child: Text("打开蓝牙")),
+              TextButton(
+                  onPressed: () {
+                    AppSettings.openBluetoothSettings();
+                   // AppSettings.openAppSettings();
+
+                   // AppSettings.openDeviceSettings();
+                  },
+                  child: Text("打开蓝牙设置"))
+            ],
           ),
         ),
       ),

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/services.dart';
 
 late _BLEManager BLE = _BLEManager._();
@@ -85,25 +86,36 @@ class _BLEManager {
     return _channel.invokeMethod("stopScan");
   }
 
-  ///强制打开蓝牙(Android Only)
-  /// IOS 跳转到设置界面
-  Future<void> openSetting() async {
-    await _channel.invokeMethod("openBle");
+  /// 打开蓝牙开关(Android Only)
+  /// IOS 跳转到系统设置界面
+  Future<void> openSwitch() async {
+    return await _channel.invokeMethod("openBle");
+  }
+
+  ///跳转到app设置页面
+  ///iOS开关蓝牙会重启app
+  Future<void> openAppSetting() async {
+    await _channel.invokeMethod("openAppSetting");
   }
 
   ///蓝牙是否开启
-  Future<bool> isOpen() async {
+  Future<bool> get isOpen async {
     return await _channel.invokeMethod<bool>("isBLEOpen") ?? false;
   }
 
   ///是否已经连接上
-  Future<bool> isConnected() async {
+  Future<bool> get isConnected async {
     return await _channel.invokeMethod<bool>("isConnected") ?? false;
   }
 
   ///获取MTU大小
-  Future<int> MTU() async {
+  Future<int> get MTU async {
     return await _channel.invokeMethod<int>("mtu") ?? 20;
+  }
+
+  ///请求权限(有则直接返回,没有则先请求)
+  Future<bool> requestPermission() async {
+    return await _channel.invokeMethod<bool>("requestPermission") ?? false;
   }
 
   ///断开连接
@@ -111,9 +123,20 @@ class _BLEManager {
     return _channel.invokeMethod("disconnect");
   }
 
-  ///GPS是否开启,android低于31以下版本蓝牙权限的时候需要
-  Future<bool> isGPSEnable() async {
-    return await _channel.invokeMethod("isGPSEnable");
+  ///GPS是否开启,android低于31以下版本蓝牙搜索的时候需要
+  Future<bool> get isGPSEnable async {
+    if (Platform.isAndroid) {
+      return await _channel.invokeMethod("isGPSEnable");
+    }
+    return true;
+  }
+
+  ///开启定位服务,android低于31以下版本蓝牙搜索的时候需要
+  Future<bool> openLocationService() async {
+    if (Platform.isAndroid) {
+      return await _channel.invokeMethod("openLocationService");
+    }
+    return true;
   }
 
   ///写入数据

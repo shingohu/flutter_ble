@@ -30,7 +30,7 @@ import cn.com.heaton.blelibrary.ble.model.BleDevice;
 import cn.com.heaton.blelibrary.ble.model.BleFactory;
 import cn.com.heaton.blelibrary.ble.model.EntityData;
 import cn.com.heaton.blelibrary.ble.model.ScanRecord;
-import cn.com.heaton.blelibrary.ble.utils.ByteUtils;
+
 
 public class BleManager {
 
@@ -97,13 +97,7 @@ public class BleManager {
         return bluetoothAdapter != null && bluetoothAdapter.isEnabled();
     }
 
-    public boolean openBluetooth() {
-        if (isBluetoothOpen()) {
-            BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-            return bluetoothAdapter.enable();
-        }
-        return false;
-    }
+
 
     public boolean isConnected() {
         if (targetConnectedDevice != null) {
@@ -483,7 +477,6 @@ public class BleManager {
         BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
         Set<BluetoothDevice> devices = adapter.getBondedDevices();
         for (BluetoothDevice device : devices) {
-
             if (device.getName() != null && targetDeviceName != null && !targetDeviceName.isEmpty()) {
                 if (device.getName().toUpperCase().startsWith(targetDeviceName)) {
                     return device;
