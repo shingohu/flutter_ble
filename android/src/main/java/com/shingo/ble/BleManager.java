@@ -119,7 +119,7 @@ public class BleManager {
 
                 @Override
                 public void onNotifySuccess(BleDevice device) {
-                    Log.e("BLE", "通知成功");
+                    Log.e("BLE", "蓝牙设备连接成功(通知已开启)");
                     for (BleListener listener : bleListeners) {
                         listener.onBleConnectChange(device.isConnected());
                     }
@@ -404,7 +404,7 @@ public class BleManager {
                     if (!device.isConnecting()) {
                         if (device.isConnected()) {
                             ///连接成功
-                            Log.e("BLE", "蓝牙设备连接成功");
+
                         } else {
                             Log.e("BLE", "蓝牙设备连接断开");
                             onDisconnected();
@@ -424,9 +424,10 @@ public class BleManager {
                     setMTU(new VoidCallback() {
                         @Override
                         public void callback() {
-                            if (notifyCharacteristicUUID != null) {
+                            if (notifyCharacteristicUUID != null&&notifyCharacteristicUUID.length()>0) {
                                 startNotify();
                             } else {
+                                Log.e("BLE", "蓝牙设备连接成功");
                                 for (BleListener listener : bleListeners) {
                                     listener.onBleConnectChange(device.isConnected());
                                 }
