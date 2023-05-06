@@ -72,6 +72,9 @@ public class FlutterBlePlugin implements MethodCallHandler, BleListener, Flutter
             result.success(true);
         } else if (method.equals("openBle")) {
             openBluetooth(result);
+        } else if (method.equals("openAppSetting")) {
+            openAppSettings();
+            result.success(true);
         } else if (method.equals("isBLEOpen")) {
             result.success(isBLEOpen());
         } else if (method.equals("MTU")) {
@@ -155,6 +158,14 @@ public class FlutterBlePlugin implements MethodCallHandler, BleListener, Flutter
 
     }
 
+    private void openAppSettings() {
+        if (mActivity != null) {
+            Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+            this.mActivity.startActivity(intent);
+
+        }
+    }
+
 
     ///打开定位服务,android 12以下蓝牙权限需要
     private void openLocationService(Result result) {
@@ -198,7 +209,7 @@ public class FlutterBlePlugin implements MethodCallHandler, BleListener, Flutter
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             ///android31上面蓝牙搜索连接不需要GPS开启了,所有直接返回true
-          //  return true;
+            //  return true;
         }
         LocationManager locationManager = (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);
         boolean networkProvider = locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
