@@ -59,13 +59,20 @@ class _BLEManager {
   }
 
   ///初始化需要连接的设备的UUID等信息
-  Future<void> init(
-      {String? name,
-      required String advertiseUUID,
-      required String mainServiceUUID,
-      required String notifyUUID,
-      required String writeUUID,
-      int requestMTU = 20}) async {
+  Future<void> init({String? name,
+    String? advertiseUUID,
+    required String mainServiceUUID,
+    required String notifyUUID,
+    required String writeUUID,
+    int requestMTU = 20}) async {
+    if ((name == null || name!.length == 0) &&
+        (advertiseUUID == null ||
+            advertiseUUID!.length == 0)) {
+      print("设备名称和广播UUID不能同时为空");
+      return;
+    }
+
+
     return _channel.invokeMethod("initUUID", {
       "deviceName": name ?? "",
       "advertiseUUID": advertiseUUID,
@@ -100,6 +107,10 @@ class _BLEManager {
 
   ///蓝牙是否开启
   Future<bool> get isOpen async {
+    if (Platform.isIOS) {
+      await _channel.invokeMethod<bool>("checkBLEState");
+      await Future.delayed(Duration(milliseconds: 30));
+    }
     return await _channel.invokeMethod<bool>("isBLEOpen") ?? false;
   }
 

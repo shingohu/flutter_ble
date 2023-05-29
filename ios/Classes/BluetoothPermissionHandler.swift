@@ -51,7 +51,6 @@ class BluetoothPermissionHandler: NSObject {
             // Before iOS 13, Bluetooth permissions are not required
             permissionCallback(true)
             notDetermined = false
-            
         }
         
         if(notDetermined){
@@ -63,6 +62,7 @@ class BluetoothPermissionHandler: NSObject {
                 })
             
         }else{
+            BleManager.INSTANCE.bleStateCheck()
             self.permissionCallback = nil
             self.stateDisposable?.dispose()
         }

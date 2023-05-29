@@ -36,7 +36,7 @@ public class BleManager {
 
     private final static BleManager instance = new BleManager();
     private String targetDeviceName = "";//设备名称,用来过滤
-    private String advertiseUUID = ""; //设备广播出来的UUID,一般就是主服务UUID,用来过滤
+    private String advertiseUUID; //设备广播出来的UUID,一般就是主服务UUID,用来过滤
     private String mainServiceUUID = ""; //主服务UUID
     private String writeCharacteristicUUID = "";//主特征通知UUID
     private String notifyCharacteristicUUID = "";//主特征写UUID
@@ -96,7 +96,6 @@ public class BleManager {
         BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         return bluetoothAdapter != null && bluetoothAdapter.isEnabled();
     }
-
 
 
     public boolean isConnected() {
@@ -314,11 +313,19 @@ public class BleManager {
     }
 
     private synchronized boolean isTargetBleDevice(List<ParcelUuid> advertiseServices) {
-        if (advertiseServices != null && advertiseUUID != null) {
+        if (advertiseServices != null) {
             for (ParcelUuid uuid : advertiseServices) {
-                if (uuid.getUuid().toString().equals(UUID.fromString(advertiseUUID).toString())) {
-                    //可能找到指定的设备
-                    return true;
+                if (advertiseUUID != null) {
+                    if (uuid.getUuid().toString().equals(UUID.fromString(advertiseUUID).toString())) {
+                        //可能找到指定的设备
+                        return true;
+                    }
+                }
+                if (mainServiceUUID != null) {
+                    if (uuid.getUuid().toString().equals(UUID.fromString(mainServiceUUID).toString())) {
+                        //可能找到指定的设备
+                        return true;
+                    }
                 }
             }
         }
@@ -424,7 +431,7 @@ public class BleManager {
                     setMTU(new VoidCallback() {
                         @Override
                         public void callback() {
-                            if (notifyCharacteristicUUID != null&&notifyCharacteristicUUID.length()>0) {
+                            if (notifyCharacteristicUUID != null && notifyCharacteristicUUID.length() > 0) {
                                 startNotify();
                             } else {
                                 Log.e("BLE", "蓝牙设备连接成功");

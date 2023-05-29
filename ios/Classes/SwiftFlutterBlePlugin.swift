@@ -79,6 +79,10 @@ public class SwiftFlutterBlePlugin: NSObject, FlutterPlugin,BleProtocol{
             result(false)
         }
     }
+    if(method == "checkBLEState"){
+        BleManager.INSTANCE.bleStateCheck()
+        result(true)
+    }
 
     if(method == "disconnect"){
 
@@ -92,7 +96,7 @@ public class SwiftFlutterBlePlugin: NSObject, FlutterPlugin,BleProtocol{
     
     private func initUUID(uuids:Dictionary<String,Any>){
         let targetDeviceName = uuids["deviceName"] as! String
-        let advertiseUUID = uuids["advertiseUUID"] as! String
+        let advertiseUUID = uuids["advertiseUUID"] as? String
         let mainServiceUUID = uuids["mainServiceUUID"] as! String
         let notifycharacteristicUUID = uuids["notifycharacteristicUUID"] as! String
         let writecharacteristicUUID = uuids["writecharacteristicUUID"] as! String
@@ -147,7 +151,7 @@ public class SwiftFlutterBlePlugin: NSObject, FlutterPlugin,BleProtocol{
     
     func onNofitySuccess(value: Data) {
         
-        channel?.invokeMethod("notify", arguments: value.hexEncodedString().uppercased())
+        channel?.invokeMethod("notify", arguments: FlutterStandardTypedData(bytes: value))
     }
 }
 
