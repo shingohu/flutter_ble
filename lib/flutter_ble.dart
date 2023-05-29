@@ -4,12 +4,27 @@ import 'package:flutter/services.dart';
 
 late _BLEManager BLE = _BLEManager._();
 
+class BLEDevice {
+  String id;
+  String name;
+  bool connected;
+
+  BLEDevice({required this.id, required this.name, this.connected = false});
+}
+
+typedef ScanCallback = Function(BLEDevice);
+
 class _BLEManager {
   static const MethodChannel _channel = const MethodChannel('flutter_ble');
 
   _BLEManager._() {
     _bleListener();
   }
+
+  ScanCallback? scanCallback;
+
+  ///已连接的设备
+  BLEDevice? connectedDevice;
 
   List<BLEListener> _bleListeners = [];
 
@@ -31,11 +46,19 @@ class _BLEManager {
         _notifyBleEnableChange(call.arguments);
       }
       if (call.method == "bleConnect") {
+        connectedDevice = await lastConnectedBLEDevice();
         _notifyBleConnectChange(call.arguments);
       }
       if (call.method == "notify") {
         _notifyBleNotifyData(call.arguments);
       }
+      if (call.method == "scanResult") {
+        scanCallback?.call(BLEDevice(
+            id: call.arguments["id"],
+            name: call.arguments["name"],
+            connected: call.arguments["connected"]));
+      }
+
       return true;
     });
   }
@@ -59,20 +82,18 @@ class _BLEManager {
   }
 
   ///初始化需要连接的设备的UUID等信息
-  Future<void> init({String? name,
-    String? advertiseUUID,
-    required String mainServiceUUID,
-    required String notifyUUID,
-    required String writeUUID,
-    int requestMTU = 20}) async {
+  Future<void> init(
+      {String? name,
+      String? advertiseUUID,
+      required String mainServiceUUID,
+      required String notifyUUID,
+      required String writeUUID,
+      int requestMTU = 20}) async {
     if ((name == null || name!.length == 0) &&
-        (advertiseUUID == null ||
-            advertiseUUID!.length == 0)) {
+        (advertiseUUID == null || advertiseUUID!.length == 0)) {
       print("设备名称和广播UUID不能同时为空");
       return;
     }
-
-
     return _channel.invokeMethod("initUUID", {
       "deviceName": name ?? "",
       "advertiseUUID": advertiseUUID,
@@ -91,6 +112,25 @@ class _BLEManager {
   ///停止扫描
   Future<void> stopScan() async {
     return _channel.invokeMethod("stopScan");
+  }
+
+  ///扫描并返回搜索结果
+  Future<bool> startScanWithResult(
+      {int scanPeriod = 10, ScanCallback? callback}) async {
+    scanCallback = callback;
+    return await _channel
+        .invokeMethod("startScanWithResult", {"scanPeriod": scanPeriod});
+  }
+
+  ///停止扫描
+  Future<void> stopScanWithResult() async {
+    scanCallback = null;
+    return _channel.invokeMethod("stopScanWithResult");
+  }
+
+  ///根据ID进行连接，这里ID 在android上是设备macAddress
+  Future<bool> connectById(String id) async {
+    return await _channel.invokeMethod("connectById", {"id": id});
   }
 
   /// 打开蓝牙开关(Android Only)
@@ -154,6 +194,17 @@ class _BLEManager {
   Future<bool> write(Uint8List bytes) async {
     bool result = await _channel.invokeMethod<bool>("write", bytes) ?? false;
     return result;
+  }
+
+  ///最后一次连接的蓝牙设备
+  Future<BLEDevice?> lastConnectedBLEDevice() async {
+    Map? info = await _channel.invokeMethod("connectedDeviceInfo");
+    if (info == null) {
+      return null;
+    } else {
+      return BLEDevice(
+          id: info["id"], name: info["name"], connected: info["connected"]);
+    }
   }
 }
 

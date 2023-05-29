@@ -70,6 +70,26 @@ public class FlutterBlePlugin implements MethodCallHandler, BleListener, Flutter
         } else if (method.equals("stopScan")) {
             BleManager.getInstance().setStopScan();
             result.success(true);
+        } else if (method.equals("startScanWithResult")) {
+            int scanPeriod = call.argument("scanPeriod");
+            startScanAndResult(scanPeriod);
+        } else if (method.equals("stopScanWithResult")) {
+            stopScanWithResult();
+            result.success(true);
+        } else if (method.equals("connectById")) {
+            String id = call.argument("id");
+            connectById(id, new BleManager.ConnectCallback() {
+                @Override
+                public void onConnected() {
+                    result.success(true);
+                }
+
+                @Override
+                public void onConnectFailed() {
+                    result.success(false);
+                }
+            });
+
         } else if (method.equals("openBle")) {
             openBluetooth(result);
         } else if (method.equals("openAppSetting")) {
@@ -113,6 +133,8 @@ public class FlutterBlePlugin implements MethodCallHandler, BleListener, Flutter
         } else if (method.equals("disconnect")) {
             BleManager.getInstance().setDisconnect();
             result.success(true);
+        } else if (method.equals("connectedDeviceInfo")) {
+            result.success(BleManager.getInstance().getConnectedInfo());
         } else {
             result.notImplemented();
         }
@@ -133,6 +155,18 @@ public class FlutterBlePlugin implements MethodCallHandler, BleListener, Flutter
     //扫描并连接
     private boolean startScan() {
         return BleManager.getInstance().startScan();
+    }
+
+    private void connectById(String id, BleManager.ConnectCallback callback) {
+        BleManager.getInstance().connectById(id, callback);
+    }
+
+    private void startScanAndResult(int scanPeriod) {
+        BleManager.getInstance().startScanWithResult(scanPeriod, result -> UIHandler.of().post(() -> mChannel.invokeMethod("scanResult", result)));
+    }
+
+    private void stopScanWithResult() {
+        BleManager.getInstance().stopScanWithResult();
     }
 
 

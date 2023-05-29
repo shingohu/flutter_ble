@@ -14,8 +14,10 @@ import android.util.Log;
 import androidx.core.content.PermissionChecker;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -195,7 +197,6 @@ public class BleManager {
                 .setScanPeriod(12 * 1000);
         mBle = options.create(mContext);
         bleStatusListener();
-        startScan();
     }
 
 
@@ -336,12 +337,6 @@ public class BleManager {
         return MTU;
     }
 
-    public abstract class VoidCallback {
-
-        public void callback() {
-        }
-
-    }
 
     private void setMTU(VoidCallback callback) {
         if (requestMTU > 20) {
@@ -364,7 +359,7 @@ public class BleManager {
     private synchronized void connectTargetDevice() {
         if (targetConnectedDevice != null) {
             Log.e("BLE", "找到指定的设备,停止扫描,开始连接");
-            connect();
+            connect(null);
         }
     }
 
@@ -402,7 +397,7 @@ public class BleManager {
     }
 
 
-    private synchronized void connect() {
+    private synchronized void connect(ConnectCallback callback) {
         if (targetConnectedDevice != null) {
             mBle.connect(targetConnectedDevice, new BleConnectCallback<BleDevice>() {
                 @Override
@@ -411,7 +406,6 @@ public class BleManager {
                     if (!device.isConnecting()) {
                         if (device.isConnected()) {
                             ///连接成功
-
                         } else {
                             Log.e("BLE", "蓝牙设备连接断开");
                             onDisconnected();
@@ -428,21 +422,26 @@ public class BleManager {
                 @Override
                 public void onReady(BleDevice device) {
                     super.onReady(device);
-                    setMTU(new VoidCallback() {
-                        @Override
-                        public void callback() {
-                            if (notifyCharacteristicUUID != null && notifyCharacteristicUUID.length() > 0) {
-                                startNotify();
-                            } else {
-                                Log.e("BLE", "蓝牙设备连接成功");
-                                for (BleListener listener : bleListeners) {
-                                    listener.onBleConnectChange(device.isConnected());
-                                }
+                    setMTU(() -> {
+                        if (notifyCharacteristicUUID != null && notifyCharacteristicUUID.length() > 0) {
+                            startNotify();
+                        } else {
+                            Log.e("BLE", "蓝牙设备连接成功");
+                            for (BleListener listener : bleListeners) {
+                                listener.onBleConnectChange(device.isConnected());
                             }
                         }
                     });
+                    if (callback != null) {
+                        callback.onConnected();
+                    }
+                }
 
-
+                @Override
+                public void onConnectFailed(BleDevice device, int errorCode) {
+                    if (callback != null) {
+                        callback.onConnectFailed();
+                    }
                 }
             });
 
@@ -499,6 +498,86 @@ public class BleManager {
 
         }
         return null;
+    }
+
+
+    Map<String, BleDevice> _scanDevices = new HashMap<>();
+
+    ///扫描并返回设备结果
+    public void startScanWithResult(int scanPeriod, ScanCallback callback) {
+        autoScanAndConnect = false;
+        if (!mBle.isScanning()) {
+            mBle.startScan(new BleScanCallback<BleDevice>() {
+                @Override
+                public void onLeScan(BleDevice device, int rssi, byte[] scanRecord) {
+                    String bleName = device.getBleName();
+                    String macAddress = device.getBleAddress();
+                    ScanRecord parseRecord = ScanRecord.parseFromBytes(scanRecord);
+                    Log.e("BLE", "扫描到蓝牙设备" + bleName + parseRecord.toString());
+                    Map result = new HashMap();
+
+
+                    result.put("id", macAddress);
+                    result.put("name", bleName);
+                    result.put("connected", device.isConnected());
+                    if (!_scanDevices.containsKey(macAddress)) {
+                        _scanDevices.put(macAddress, device);
+                        callback.onScan(result);
+                    }
+
+                }
+            }, scanPeriod * 1000);
+        }
+
+    }
+
+
+    ///停止带结果的搜索
+    void stopScanWithResult() {
+        autoScanAndConnect = false;
+        stopScan();
+        _scanDevices.clear();
+    }
+
+    void connectById(String id, ConnectCallback callback) {
+        if (id != null && _scanDevices.containsKey(id)) {
+            BleDevice device = _scanDevices.get(id);
+            targetConnectedDevice = device;
+            connect(callback);
+        } else {
+            if (callback != null) {
+                callback.onConnectFailed();
+            }
+        }
+
+    }
+
+    Map getConnectedInfo() {
+        if (targetConnectedDevice != null) {
+            Map result = new HashMap();
+            result.put("id", targetConnectedDevice.getBleAddress());
+            result.put("name", targetConnectedDevice.getBleName());
+            result.put("connected", targetConnectedDevice.isConnected());
+            return result;
+        }
+        return null;
+    }
+
+
+    interface ScanCallback {
+        void onScan(Map result);
+    }
+
+    interface ConnectCallback {
+        void onConnected();
+
+        void onConnectFailed();
+    }
+
+    interface VoidCallback {
+
+        void callback();
+
     }
 
 }
