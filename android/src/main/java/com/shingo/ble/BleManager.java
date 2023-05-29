@@ -62,7 +62,7 @@ public class BleManager {
     private BleDevice targetConnectedDevice;
 
     ///是否自动扫描和连接
-    private boolean autoScanAndConnect = true;
+    private boolean autoScanAndConnect = false;
 
     ///最终的MTU
     private int MTU = 20;
@@ -80,7 +80,7 @@ public class BleManager {
     }
 
 
-    public void init(Context context, String targetDeviceName, String advertiseUUID, String mainServiceUUID, String notifyCharacteristicUUID, String writeCharacteristicUUID, int requestMTU) {
+    public void init(Context context, String targetDeviceName, String advertiseUUID, String mainServiceUUID, String notifyCharacteristicUUID, String writeCharacteristicUUID, int requestMTU, boolean autoScanAndConnect) {
         this.mContext = context;
         this.targetDeviceName = targetDeviceName.toUpperCase();
         this.advertiseUUID = advertiseUUID;
@@ -90,6 +90,7 @@ public class BleManager {
         if (requestMTU > 20) {
             this.requestMTU = requestMTU;
         }
+        this.autoScanAndConnect = autoScanAndConnect;
         initBle();
     }
 
@@ -197,6 +198,9 @@ public class BleManager {
                 .setScanPeriod(12 * 1000);
         mBle = options.create(mContext);
         bleStatusListener();
+        if (this.autoScanAndConnect) {
+            startScan();
+        }
     }
 
 
@@ -515,8 +519,6 @@ public class BleManager {
                     ScanRecord parseRecord = ScanRecord.parseFromBytes(scanRecord);
                     Log.e("BLE", "扫描到蓝牙设备" + bleName + parseRecord.toString());
                     Map result = new HashMap();
-
-
                     result.put("id", macAddress);
                     result.put("name", bleName);
                     result.put("connected", device.isConnected());

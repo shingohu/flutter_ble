@@ -13,8 +13,12 @@ import CoreBluetooth
 
 
 
-typealias WriteSuccess = () -> ()
-typealias WriteFail = () -> ()
+typealias VoidCallback = () -> ()
+
+typealias ScanCallback = (Dictionary<String, Any>)->Void
+
+typealias ConnectCallback = (Bool)->Void
+
 
 
 class BleManager{
@@ -36,7 +40,7 @@ class BleManager{
     
    
     
-    private var autoScanAndConnect = true //是否自动扫描连接
+    private var autoScanAndConnect = false //是否自动扫描连接
     
     
    
@@ -50,6 +54,9 @@ class BleManager{
     private var connectDisposable :Disposable?//连接订阅
     private var autoScanDisposable :Disposable?//自动扫描连接设备的订阅
     private var checkBLEStateDisposable :Disposable? //蓝牙状态订阅
+    
+    
+    
     
     
     private var isScan = false
@@ -79,7 +86,7 @@ class BleManager{
     
     
     
-    public func initWithUUID(deviceName:String,deviceAdvertUUID:String?,mainServiceUUID:String,notifyCharacteristicUUID:String,writeCharacteristicUUID:String,requestMTU:Int){
+    public func initWithUUID(deviceName:String,deviceAdvertUUID:String?,mainServiceUUID:String,notifyCharacteristicUUID:String,writeCharacteristicUUID:String,requestMTU:Int,autoConnect:Bool){
         self.targetDeviceName = deviceName.uppercased()
         
         if(deviceAdvertUUID != nil){
@@ -92,6 +99,7 @@ class BleManager{
         if(requestMTU > 20){
             self.requestMTU = requestMTU
         }
+        self.autoScanAndConnect = autoConnect
         bleStateListener()
     }
     
@@ -101,7 +109,7 @@ class BleManager{
 
     //连接状态的监听
     private func connectStateListener(_ peripheral:Peripheral){
-      
+        self.peripheral = peripheral
        connectStateDisposable =  peripheral.observeConnection().subscribe(onNext:{ (b) in
             if b {
                 if !self.isTargetDeviceConnected {
@@ -160,17 +168,13 @@ class BleManager{
            ///已配对设备中连接了
             return false
        }
-        //[targetDeviceAdvertUUID]
         
-    
        self.isScan = true
        print("开始扫描并连接设备")
-    
         var servicesUUID:[CBUUID]? = nil
         if(targetDeviceAdvertUUID != nil){
             servicesUUID = [targetDeviceAdvertUUID!];
         }
-        
         scanDisposable = connectObservable(peripheralObs:  centralManager.scanForPeripherals(withServices:servicesUUID)
         .timeout(DispatchTimeInterval.seconds(12), scheduler: MainScheduler.instance)
         .filter({ per in
@@ -200,7 +204,7 @@ class BleManager{
     
     
     ///连接操作
-    private func connectObservable(peripheralObs:Observable<Peripheral>) -> Disposable {
+    private func connectObservable(peripheralObs:Observable<Peripheral>,connectCallback: ConnectCallback? = nil) -> Disposable {
         
        return peripheralObs.flatMap({ (p) -> Observable<Peripheral> in
                 self.connectStateListener(p)
@@ -214,19 +218,20 @@ class BleManager{
         .subscribe(onNext: { (chars) in
             self.characteristics = chars
             self.onScanAndConnectConnected()
+            connectCallback?(true)
         }, onError: { (error) in
             self.onScanAndConnectError()
+            connectCallback?(false)
         })
         
     }
     
     
-    func connect(peripheral:Peripheral){
-        if(self.isTargetDeviceConnected || self.isScan){
+    func connect(peripheral:Peripheral,connectCallback: ConnectCallback? = nil){
+        if(self.isTargetDeviceConnected){
             return
         }
-        self.isScan = true
-        connectDisposable = connectObservable(peripheralObs: Observable.from(optional: peripheral))
+        connectDisposable = connectObservable(peripheralObs: Observable.from(optional: peripheral),connectCallback: connectCallback)
     }
     
     
@@ -436,7 +441,7 @@ class BleManager{
                         print("设置通知出错")
                         print(error)
                     },onCompleted: {
-                        print("11111")
+                        
                     })
                 Observable<Int>.timer(RxTimeInterval.milliseconds(500), scheduler: MainScheduler.instance).subscribe { () in
                     if(self.setNotificationSuccess){
@@ -449,7 +454,7 @@ class BleManager{
     
     
     //写入数据
-    private func writeOne(data:Data,writeSuccess: WriteSuccess? = nil, writeFail: WriteFail? = nil){
+    private func writeOne(data:Data,writeSuccess: VoidCallback? = nil, writeFail: VoidCallback? = nil){
          if self.characteristics != nil {
             //过滤出来通知特征
             let writeChar:Characteristic?  = self.characteristics?.filter({ (c) -> Bool in
@@ -469,7 +474,7 @@ class BleManager{
     
     
   
-    public func write(data:Data,writeSuccess: WriteSuccess? = nil, writeFail: WriteFail? = nil){
+    public func write(data:Data,writeSuccess: VoidCallback? = nil, writeFail: VoidCallback? = nil){
         
         if(!isTargetDeviceConnected){
             writeFail?()
@@ -492,7 +497,7 @@ class BleManager{
         
     }
     
-    private func multipleWrite(data:Data,writeSuccess: WriteSuccess? = nil, writeFail: WriteFail? = nil){
+    private func multipleWrite(data:Data,writeSuccess: VoidCallback? = nil, writeFail: VoidCallback? = nil){
         
         let byteslength = data.count
         
@@ -607,6 +612,85 @@ class BleManager{
         
         
     }
+    
+    
+    
+    
+    private var scanDevices:Dictionary<String,Peripheral> = Dictionary()
+    
+    
+    private var scanWithResultDisposable :Disposable?//扫描的订阅
+    
+    public func startScanWithResult(scanPeriod:Int, callback: @escaping ScanCallback){
+        if(!isScan){
+            self.autoScanAndConnect = false
+            self.isScan = true
+            scanWithResultDisposable = self.centralManager.scanForPeripherals(withServices: nil).timeout(DispatchTimeInterval.seconds(scanPeriod), scheduler: MainScheduler.instance).subscribe(onNext: { (per) in
+                
+                let name = per.peripheral.name
+                let connected = per.peripheral.isConnected
+                let id = per.peripheral.identifier.uuidString
+                if(self.scanDevices[id] == nil){
+                    self.scanDevices[id] = per.peripheral
+                    callback(
+                    [
+                        "id":id,
+                        "connected":connected,
+                        "name":name ?? ""
+                    ])
+                }
+        
+                
+            }, onError: { (error) in
+                /// time out
+                self.isScan = false
+            },onCompleted: {
+                self.isScan = false
+            }) {
+                self.isScan = false
+            }
+        }
+    }
+    
+    public func stopScanWithResult(){
+        
+        if(scanWithResultDisposable != nil){
+            scanWithResultDisposable?.dispose();
+            scanWithResultDisposable = nil
+        }
+        
+        self.scanDevices.removeAll()
+        
+        
+    }
+    
+    public func connectById(id:String,callback: @escaping ConnectCallback){
+        let per = scanDevices[id]
+        
+        if(per != nil){
+            connect(peripheral: per!,connectCallback: callback)
+        }else{
+            callback(false)
+        }
+        
+    }
+    
+    public func getConnectedInfo()->Dictionary<String,Any>?{
+        if(self.peripheral != nil){
+            
+            return [
+            
+                "id":self.peripheral!.identifier.uuidString,
+                "name":self.peripheral!.name ?? "",
+                "connected":self.peripheral!.isConnected
+            ]
+            
+        }else{
+            return nil
+        }
+    }
+    
+    
     
     deinit {
         bleStateDisposable?.dispose()

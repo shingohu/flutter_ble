@@ -149,7 +149,8 @@ public class FlutterBlePlugin implements MethodCallHandler, BleListener, Flutter
         String nofitycharacteristicUUID = (String) arguments.get("notifycharacteristicUUID");
         String writecharacteristicUUID = (String) arguments.get("writecharacteristicUUID");
         int requestMTU = arguments.containsKey("requestMTU") ? (int) arguments.get("requestMTU") : 20;
-        BleManager.getInstance().init(mContext, targetDeviceName, advertiseUUID, mainServiceUUID, nofitycharacteristicUUID, writecharacteristicUUID, requestMTU);
+        boolean autoConnect = (boolean) arguments.get("autoConnect");
+        BleManager.getInstance().init(mContext, targetDeviceName, advertiseUUID, mainServiceUUID, nofitycharacteristicUUID, writecharacteristicUUID, requestMTU, autoConnect);
     }
 
     //扫描并连接

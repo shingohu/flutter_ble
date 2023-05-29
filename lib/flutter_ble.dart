@@ -6,7 +6,7 @@ late _BLEManager BLE = _BLEManager._();
 
 class BLEDevice {
   String id;
-  String name;
+  String? name;
   bool connected;
 
   BLEDevice({required this.id, required this.name, this.connected = false});
@@ -88,9 +88,10 @@ class _BLEManager {
       required String mainServiceUUID,
       required String notifyUUID,
       required String writeUUID,
+      bool autoConnect = false,
       int requestMTU = 20}) async {
-    if ((name == null || name!.length == 0) &&
-        (advertiseUUID == null || advertiseUUID!.length == 0)) {
+    if ((name == null || name.length == 0) &&
+        (advertiseUUID == null || advertiseUUID.length == 0)) {
       print("设备名称和广播UUID不能同时为空");
       return;
     }
@@ -101,6 +102,7 @@ class _BLEManager {
       "notifycharacteristicUUID": notifyUUID,
       "writecharacteristicUUID": writeUUID,
       "requestMTU": requestMTU,
+      "autoConnect": autoConnect
     });
   }
 
@@ -112,25 +114,6 @@ class _BLEManager {
   ///停止扫描
   Future<void> stopScan() async {
     return _channel.invokeMethod("stopScan");
-  }
-
-  ///扫描并返回搜索结果
-  Future<bool> startScanWithResult(
-      {int scanPeriod = 10, ScanCallback? callback}) async {
-    scanCallback = callback;
-    return await _channel
-        .invokeMethod("startScanWithResult", {"scanPeriod": scanPeriod});
-  }
-
-  ///停止扫描
-  Future<void> stopScanWithResult() async {
-    scanCallback = null;
-    return _channel.invokeMethod("stopScanWithResult");
-  }
-
-  ///根据ID进行连接，这里ID 在android上是设备macAddress
-  Future<bool> connectById(String id) async {
-    return await _channel.invokeMethod("connectById", {"id": id});
   }
 
   /// 打开蓝牙开关(Android Only)
@@ -194,6 +177,25 @@ class _BLEManager {
   Future<bool> write(Uint8List bytes) async {
     bool result = await _channel.invokeMethod<bool>("write", bytes) ?? false;
     return result;
+  }
+
+  ///扫描并返回搜索结果
+  Future<bool> startScanWithResult(
+      {int scanPeriod = 10, ScanCallback? callback}) async {
+    scanCallback = callback;
+    return await _channel
+        .invokeMethod("startScanWithResult", {"scanPeriod": scanPeriod});
+  }
+
+  ///停止扫描
+  Future<void> stopScanWithResult() async {
+    scanCallback = null;
+    return _channel.invokeMethod("stopScanWithResult");
+  }
+
+  ///根据ID进行连接，这里ID 在android上是设备macAddress
+  Future<bool> connectById(String id) async {
+    return await _channel.invokeMethod("connectById", {"id": id});
   }
 
   ///最后一次连接的蓝牙设备

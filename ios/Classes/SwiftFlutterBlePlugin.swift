@@ -85,11 +85,34 @@ public class SwiftFlutterBlePlugin: NSObject, FlutterPlugin,BleProtocol{
     }
 
     if(method == "disconnect"){
-
         BleManager.INSTANCE.disconnect()
-            result(true)
+        result(true)
         return
     }
+      
+      if(method == "startScanWithResult"){
+          let scanPeriod = (call.arguments as! Dictionary<String, Any>)["scanPeriod"] as! Int
+          BleManager.INSTANCE.startScanWithResult(scanPeriod: scanPeriod) { dic in
+              self.channel?.invokeMethod("scanResult", arguments: dic)
+          }
+      }
+      
+      if(method == "stopScanWithResult"){
+          BleManager.INSTANCE.stopScanWithResult();
+          result(true)
+      }
+      
+      if(method == "connectById"){
+          let id = (call.arguments as! Dictionary<String, Any>)["id"] as! String
+          BleManager.INSTANCE.connectById(id: id) { connected in
+              result(connected)
+          }
+      }
+      
+      if(method == "connectedDeviceInfo"){
+          result(BleManager.INSTANCE.getConnectedInfo())
+      }
+      
     
     
   }
@@ -101,8 +124,9 @@ public class SwiftFlutterBlePlugin: NSObject, FlutterPlugin,BleProtocol{
         let notifycharacteristicUUID = uuids["notifycharacteristicUUID"] as! String
         let writecharacteristicUUID = uuids["writecharacteristicUUID"] as! String
         let requestMTU = uuids["requestMTU"] as! Int
+        let autoConnect = uuids["autoConnect"] as! Bool
         
-        BleManager.INSTANCE.initWithUUID(deviceName: targetDeviceName, deviceAdvertUUID: advertiseUUID, mainServiceUUID: mainServiceUUID,notifyCharacteristicUUID: notifycharacteristicUUID,writeCharacteristicUUID: writecharacteristicUUID,requestMTU: requestMTU)
+        BleManager.INSTANCE.initWithUUID(deviceName: targetDeviceName, deviceAdvertUUID: advertiseUUID, mainServiceUUID: mainServiceUUID,notifyCharacteristicUUID: notifycharacteristicUUID,writeCharacteristicUUID: writecharacteristicUUID,requestMTU: requestMTU,autoConnect: autoConnect)
         
     }
     
