@@ -516,14 +516,21 @@ public class BleManager {
                 public void onLeScan(BleDevice device, int rssi, byte[] scanRecord) {
                     String bleName = device.getBleName();
                     String macAddress = device.getBleAddress();
-                    ScanRecord parseRecord = ScanRecord.parseFromBytes(scanRecord);
-                    Log.e("BLE", "扫描到蓝牙设备" + bleName + parseRecord.toString());
+                    ///根据mac地址和名称混合成一个
+                    String unId = macAddress;
+                    if (bleName != null && bleName.length() > 0) {
+                        unId += "-" + bleName;
+                        Log.e("BLE", "扫描到蓝牙设备" + bleName + "-----" + macAddress);
+                    } else {
+                        unId += "-" + "";
+                    }
+
                     Map result = new HashMap();
-                    result.put("id", macAddress);
+                    result.put("id", unId);
                     result.put("name", bleName);
                     result.put("connected", device.isConnected());
-                    if (!_scanDevices.containsKey(macAddress)) {
-                        _scanDevices.put(macAddress, device);
+                    if (!_scanDevices.containsKey(unId)) {
+                        _scanDevices.put(unId, device);
                         callback.onScan(result);
                     }
 
@@ -557,8 +564,17 @@ public class BleManager {
     Map getConnectedInfo() {
         if (targetConnectedDevice != null) {
             Map result = new HashMap();
-            result.put("id", targetConnectedDevice.getBleAddress());
-            result.put("name", targetConnectedDevice.getBleName());
+            ///根据mac地址和名称混合成一个
+            String unId = targetConnectedDevice.getBleAddress();
+            String bleName = targetConnectedDevice.getBleName();
+            if (bleName != null && bleName.length() > 0) {
+                unId += "-" + bleName;
+                Log.e("BLE", "扫描到蓝牙设备" + bleName + "-----" + targetConnectedDevice.getBleAddress());
+            } else {
+                unId += "-" + "";
+            }
+            result.put("id", unId);
+            result.put("name", bleName);
             result.put("connected", targetConnectedDevice.isConnected());
             return result;
         }

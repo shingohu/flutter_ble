@@ -629,15 +629,22 @@ class BleManager{
                 
                 let name = per.peripheral.name
                 let connected = per.peripheral.isConnected
-                let id = per.peripheral.identifier.uuidString
-                if(self.scanDevices[id] == nil){
-                    self.scanDevices[id] = per.peripheral
-                    callback(
-                    [
-                        "id":id,
-                        "connected":connected,
-                        "name":name ?? ""
-                    ])
+                let uuid = per.peripheral.identifier.uuidString
+                
+                let empty = ""
+                ///根据名称和id混合成一个unId
+                var unId =  uuid + "-\(name ?? empty)"
+
+                
+                
+                if(self.scanDevices[unId] == nil){
+                    self.scanDevices[unId] = per.peripheral
+                        callback(
+                            [
+                                "id":unId,
+                                "connected":connected,
+                                "name":name ?? ""
+                            ])
                 }
         
                 
@@ -678,10 +685,16 @@ class BleManager{
     public func getConnectedInfo()->Dictionary<String,Any>?{
         if(self.peripheral != nil){
             
-            return [
             
-                "id":self.peripheral!.identifier.uuidString,
-                "name":self.peripheral!.name ?? "",
+            
+            var uuid = self.peripheral!.identifier.uuidString
+            var name = self.peripheral!.name;
+            let empty = ""
+            ///根据名称和id混合成一个unId
+            var unId =  uuid + "-\(name ?? empty)"
+            return [
+                "id":unId,
+                "name":name ?? "",
                 "connected":self.peripheral!.isConnected
             ]
             
