@@ -81,12 +81,21 @@ public class FlutterBlePlugin implements MethodCallHandler, BleListener, Flutter
             connectById(id, new BleManager.ConnectCallback() {
                 @Override
                 public void onConnected() {
-                    result.success(true);
+                    try {
+                        result.success(true);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
                 }
 
                 @Override
                 public void onConnectFailed() {
-                    result.success(false);
+                    try {
+                        result.success(false);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+
                 }
             });
 
