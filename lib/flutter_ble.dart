@@ -46,7 +46,11 @@ class _BLEManager {
         _notifyBleEnableChange(call.arguments);
       }
       if (call.method == "bleConnect") {
-        connectedDevice = await lastConnectedBLEDevice();
+        if (call.arguments == true) {
+          connectedDevice = await lastConnectedBLEDevice();
+        } else {
+          connectedDevice = null;
+        }
         _notifyBleConnectChange(call.arguments);
       }
       if (call.method == "notify") {
@@ -82,14 +86,13 @@ class _BLEManager {
   }
 
   ///初始化需要连接的设备的UUID等信息
-  Future<void> init(
-      {String? name,
-      String? advertiseUUID,
-      required String mainServiceUUID,
-      required String notifyUUID,
-      required String writeUUID,
-      bool autoConnect = false,
-      int requestMTU = 20}) async {
+  Future<void> init({String? name,
+    String? advertiseUUID,
+    required String mainServiceUUID,
+    required String notifyUUID,
+    required String writeUUID,
+    bool autoConnect = false,
+    int requestMTU = 20}) async {
     if ((name == null || name.length == 0) &&
         (advertiseUUID == null || advertiseUUID.length == 0)) {
       print("设备名称和广播UUID不能同时为空");
