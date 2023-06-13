@@ -33,6 +33,8 @@ import io.flutter.plugin.common.MethodChannel.Result;
 import io.flutter.plugin.common.PluginRegistry;
 import io.flutter.plugin.common.PluginRegistry.Registrar;
 
+import android.net.Uri;
+
 /**
  * FlutterBlePlugin
  */
@@ -204,9 +206,9 @@ public class FlutterBlePlugin implements MethodCallHandler, BleListener, Flutter
 
     private void openAppSettings() {
         if (mActivity != null) {
-            Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+            Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                    .setData(Uri.fromParts("package", this.mActivity.getPackageName(), null));
             this.mActivity.startActivity(intent);
-
         }
     }
 
@@ -250,11 +252,6 @@ public class FlutterBlePlugin implements MethodCallHandler, BleListener, Flutter
 
     //GPS是否开启
     public static final boolean isGPSEnable(Context context) {
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            ///android31上面蓝牙搜索连接不需要GPS开启了,所有直接返回true
-            //  return true;
-        }
         LocationManager locationManager = (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);
         boolean networkProvider = locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
         boolean gpsProvider = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
